@@ -2,7 +2,7 @@
 
 # Script to create Podman pod with 3 containers: PostgreSQL, FastAPI Backend, and React Frontend
 
-POD_NAME="EduTreak_Pod"
+POD_NAME="EduTrack_Pod"
 
 # Check if podman is installed
 if ! command -v podman &> /dev/null; then
