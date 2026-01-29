@@ -54,7 +54,7 @@ podman run -d \
     --memory=512m \
     --cpus=0.5 \
     python:3.11-slim \
-    /bin/sh -c "pip install -r requirments.txt && uvicorn main:app --host 0.0.0.0 --port 8000 || tail -f /dev/null"
+    /bin/sh -c "tail -f /dev/null"
 
 # Start React Frontend Container
 echo "Starting frontend container..."
@@ -65,10 +65,10 @@ podman run -d \
     -e CHOKIDAR_USEPOLLING=true \
     -v $(pwd)/frontend:/app:Z \
     --workdir /app \
-    --memory=512m \
-    --cpus=0.5 \
+    --memory=2g \
+    --cpus=1 \
     node:18-alpine \
-    /bin/sh -c "npm install && npm start || tail -f /dev/null"
+    /bin/sh -c "tail -f /dev/null"
 
 echo ""
 echo "Pod ${POD_NAME} created successfully!"
