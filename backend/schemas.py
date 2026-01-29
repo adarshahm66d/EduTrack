@@ -28,3 +28,23 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
+
+class CourseResponse(BaseModel):
+    id: int
+    course_title: str
+    link: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class CourseVideoResponse(BaseModel):
+    id: int
+    course_id: int
+    title: str
+    video_link: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class YouTubePlaylistRequest(BaseModel):
+    playlist_url: str
