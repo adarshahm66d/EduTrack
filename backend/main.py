@@ -44,6 +44,13 @@ def signup(user_data: UserSignup, db: Session = Depends(get_db)):
             detail="Username already taken"
         )
     
+    # Automatically detect role based on email if not provided
+    # If email contains "admin" (case-insensitive), assign admin role, otherwise student
+    if not user_data.role or user_data.role == "student":
+        detected_role = "admin" if "admin" in user_data.email.lower() else "student"
+    else:
+        detected_role = user_data.role
+    
     # Create new user
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
@@ -51,7 +58,7 @@ def signup(user_data: UserSignup, db: Session = Depends(get_db)):
         email=user_data.email,
         user_name=user_data.user_name,
         password=hashed_password,
-        role=user_data.role
+        role=detected_role
     )
     
     db.add(new_user)

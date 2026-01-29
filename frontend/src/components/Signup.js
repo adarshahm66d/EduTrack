@@ -9,8 +9,8 @@ const Signup = () => {
         email: '',
         user_name: '',
         password: '',
-        role: 'student',
     });
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -28,8 +28,22 @@ const Signup = () => {
         setLoading(true);
         setError('');
 
+        // Validate password match
+        if (formData.password !== confirmPassword) {
+            setError('Passwords do not match. Please try again.');
+            setLoading(false);
+            return;
+        }
+
+        // Automatically detect role based on email
+        const detectedRole = formData.email.toLowerCase().includes('admin') ? 'admin' : 'student';
+        const signupData = {
+            ...formData,
+            role: detectedRole
+        };
+
         try {
-            await signup(formData);
+            await signup(signupData);
             navigate('/login');
         } catch (err) {
             console.error('Signup error:', err);
@@ -107,16 +121,20 @@ const Signup = () => {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="role">Role</label>
-                        <select
-                            id="role"
-                            name="role"
-                            value={formData.role}
-                            onChange={handleChange}
-                        >
-                            <option value="student">Student</option>
-                            <option value="instructor">Instructor</option>
-                        </select>
+                        <label htmlFor="confirmPassword">Confirm Password</label>
+                        <input
+                            type="password"
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            value={confirmPassword}
+                            onChange={(e) => {
+                                setConfirmPassword(e.target.value);
+                                setError('');
+                            }}
+                            required
+                            placeholder="Confirm your password"
+                            minLength="6"
+                        />
                     </div>
 
                     {error && <div className="error-message">{error}</div>}
