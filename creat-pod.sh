@@ -63,6 +63,10 @@ podman run -d \
     --name frontend \
     -e REACT_APP_API_URL=http://localhost:8000 \
     -e CHOKIDAR_USEPOLLING=true \
+    -e WATCHPACK_POLLING=true \
+    -e FAST_REFRESH=true \
+    -e CHOKIDAR_INTERVAL=1000 \
+    -e WATCHPACK_POLLING_INTERVAL=1000 \
     -v $(pwd)/frontend:/app:Z \
     --workdir /app \
     --memory=2g \

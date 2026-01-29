@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../api';
 import './Auth.css';
 
-const Login = () => {
+const Login = ({ onLogin }) => {
     const [formData, setFormData] = useState({
         user_name: '',
         password: '',
@@ -29,7 +29,12 @@ const Login = () => {
             const response = await login(formData);
             localStorage.setItem('token', response.access_token);
             localStorage.setItem('user', JSON.stringify(response.user));
-            navigate('/dashboard');
+            // Trigger token update in App.js
+            if (onLogin) onLogin();
+            // Dispatch custom event for App.js to listen
+            window.dispatchEvent(new Event('tokenUpdated'));
+            // Navigate to dashboard
+            navigate('/dashboard', { replace: true });
         } catch (err) {
             console.error('Login error:', err);
             if (err.response) {

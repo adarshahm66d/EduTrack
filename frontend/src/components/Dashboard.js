@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getCurrentUser } from '../api';
+import { useNavigate, Link } from 'react-router-dom';
+import { getCurrentUser, getCourses } from '../api';
 import './Dashboard.css';
 
 const Dashboard = () => {
     const [user, setUser] = useState(null);
+    const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [coursesLoading, setCoursesLoading] = useState(true);
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -15,21 +18,26 @@ const Dashboard = () => {
             return;
         }
 
-        const fetchUser = async () => {
+        const fetchData = async () => {
             try {
-                const userData = await getCurrentUser(token);
+                const [userData, coursesData] = await Promise.all([
+                    getCurrentUser(token),
+                    getCourses()
+                ]);
                 setUser(userData);
+                setCourses(coursesData);
             } catch (err) {
-                console.error('Failed to fetch user:', err);
+                console.error('Failed to fetch data:', err);
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 navigate('/login');
             } finally {
                 setLoading(false);
+                setCoursesLoading(false);
             }
         };
 
-        fetchUser();
+        fetchData();
     }, [navigate]);
 
     const handleLogout = () => {
@@ -38,30 +46,126 @@ const Dashboard = () => {
         navigate('/login');
     };
 
+    const toggleUserMenu = () => {
+        setShowUserMenu(!showUserMenu);
+    };
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showUserMenu && !event.target.closest('.user-menu-container')) {
+                setShowUserMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showUserMenu]);
+
     if (loading) {
         return <div className="dashboard-loading">Loading...</div>;
     }
 
     return (
         <div className="dashboard">
-            <div className="dashboard-header">
-                <h1>Welcome to EduTrack</h1>
-                <button onClick={handleLogout} className="logout-btn">
-                    Logout
-                </button>
-            </div>
-            <div className="dashboard-content">
-                {user && (
-                    <div className="user-info">
-                        <h2>User Information</h2>
-                        <p><strong>Name:</strong> {user.name}</p>
-                        <p><strong>Email:</strong> {user.email}</p>
-                        <p><strong>Username:</strong> {user.user_name}</p>
-                        <p><strong>Role:</strong> {user.role}</p>
-                        <p><strong>Member since:</strong> {new Date(user.created_at).toLocaleDateString()}</p>
+            <nav className="dashboard-nav">
+                <div className="nav-container">
+                    <Link to="/" className="logo-link">
+                        <h1>EduTrack</h1>
+                    </Link>
+                    <div className="nav-right">
+                        <div className="user-menu-container">
+                            <button className="user-menu-button" onClick={toggleUserMenu}>
+                                <div className="user-avatar">
+                                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                                <span className="user-name">{user?.name || 'User'}</span>
+                                <span className="dropdown-arrow">▼</span>
+                            </button>
+                            {showUserMenu && (
+                                <div className="user-menu-dropdown">
+                                    <div className="user-menu-header">
+                                        <div className="user-avatar-large">
+                                            {user?.name?.charAt(0).toUpperCase() || 'U'}
+                                        </div>
+                                        <div className="user-info-header">
+                                            <h3>{user?.name}</h3>
+                                            <p>{user?.email}</p>
+                                            <span className="user-role-badge">{user?.role}</span>
+                                        </div>
+                                    </div>
+                                    <div className="user-menu-details">
+                                        <div className="user-detail-item">
+                                            <strong>Username:</strong>
+                                            <span>{user?.user_name}</span>
+                                        </div>
+                                        <div className="user-detail-item">
+                                            <strong>Role:</strong>
+                                            <span>{user?.role}</span>
+                                        </div>
+                                        <div className="user-detail-item">
+                                            <strong>Member since:</strong>
+                                            <span>{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="user-menu-footer">
+                                        <button onClick={handleLogout} className="logout-button">
+                                            Logout
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                )}
-            </div>
+                </div>
+            </nav>
+
+            <main className="dashboard-main">
+                <div className="dashboard-header">
+                    <h1>Welcome back, {user?.name}!</h1>
+                    <p className="dashboard-subtitle">Continue your learning journey</p>
+                </div>
+
+                <section className="courses-section">
+                    <h2 className="section-title">Course Catalog</h2>
+
+                    {coursesLoading && (
+                        <div className="loading-message">Loading courses...</div>
+                    )}
+
+                    {!coursesLoading && courses.length === 0 && (
+                        <div className="empty-message">
+                            <p>No courses available at the moment.</p>
+                            <p>Check back soon for new courses!</p>
+                        </div>
+                    )}
+
+                    {!coursesLoading && courses.length > 0 && (
+                        <div className="courses-grid">
+                            {courses.map((course) => (
+                                <div key={course.id} className="course-card">
+                                    <div className="course-card-header">
+                                        <div className="course-icon">📚</div>
+                                        <h3 className="course-title">{course.course_title}</h3>
+                                    </div>
+                                    <div className="course-card-body">
+                                        <p className="course-description">
+                                            Click below to start learning
+                                        </p>
+                                    </div>
+                                    <div className="course-card-footer">
+                                        <Link to={`/course/${course.id}`} className="btn-enroll">
+                                            Start Course
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            </main>
         </div>
     );
 };
