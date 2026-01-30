@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getCourse, getCourseVideos, updateVideoProgress } from '../api';
 import VideoPlayer from './VideoPlayer';
 import './CourseDetail.css';
 
 const CourseDetail = () => {
     const { courseId } = useParams();
-    const navigate = useNavigate();
     const [course, setCourse] = useState(null);
     const [videos, setVideos] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState(null);

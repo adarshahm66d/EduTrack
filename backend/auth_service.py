@@ -74,6 +74,18 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
         "user": user
     }
 
+@router.get("/users/students", response_model=list[UserResponse])
+def get_all_students(db: Session = Depends(get_db)):
+    """Get all students"""
+    students = db.query(User).filter(User.role == 'student').all()
+    return students
+
+@router.get("/users", response_model=list[UserResponse])
+def get_all_users(db: Session = Depends(get_db)):
+    """Get all users (admin only - should be protected in production)"""
+    users = db.query(User).all()
+    return users
+
 @router.get("/users/me", response_model=UserResponse)
 def get_current_user(token: str, db: Session = Depends(get_db)):
     """Get current authenticated user"""

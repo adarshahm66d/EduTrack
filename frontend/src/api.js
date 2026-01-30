@@ -7,6 +7,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    timeout: 10000, // 10 second timeout
 });
 
 // Add token to requests if available
@@ -17,6 +18,19 @@ api.interceptors.request.use((config) => {
     }
     return config;
 });
+
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.code === 'ECONNABORTED') {
+            console.error('Request timeout - backend may be slow to respond');
+        } else if (error.message === 'Network Error') {
+            console.error('Network error - check if backend is running on', API_URL);
+        }
+        return Promise.reject(error);
+    }
+);
 
 // Auth Service API
 export const signup = async (userData) => {
@@ -36,6 +50,11 @@ export const getCurrentUser = async (token) => {
     return response.data;
 };
 
+export const getAllStudents = async () => {
+    const response = await api.get('/auth/users/students');
+    return response.data;
+};
+
 // Course Service API
 export const getCourses = async () => {
     const response = await api.get('/courses');
@@ -44,6 +63,11 @@ export const getCourses = async () => {
 
 export const getCourse = async (courseId) => {
     const response = await api.get(`/courses/${courseId}`);
+    return response.data;
+};
+
+export const deleteCourse = async (courseId) => {
+    const response = await api.delete(`/courses/${courseId}`);
     return response.data;
 };
 

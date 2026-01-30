@@ -22,8 +22,23 @@ const Dashboard = () => {
 
         const extractVideoId = (url) => {
             if (!url) return null;
-            const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-            return match ? match[1] : null;
+            
+            // Try multiple patterns to extract video ID
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+                /[?&]v=([a-zA-Z0-9_-]{11})/,
+                /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+                /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            }
+            
+            return null;
         };
 
         const fetchData = async () => {
@@ -42,11 +57,16 @@ const Dashboard = () => {
                         if (videos && videos.length > 0 && videos[0].video_link) {
                             const videoId = extractVideoId(videos[0].video_link);
                             if (videoId) {
+                                const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
                                 return {
                                     courseId: course.id,
-                                    thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                                    thumbnail: thumbnailUrl
                                 };
+                            } else {
+                                console.warn(`Could not extract video ID from: ${videos[0].video_link}`);
                             }
+                        } else {
+                            console.warn(`No videos found for course ${course.id}`);
                         }
                     } catch (err) {
                         console.error(`Error fetching videos for course ${course.id}:`, err);
@@ -244,11 +264,13 @@ const Dashboard = () => {
                                         <div className="course-card-header">
                                             <h3 className="course-title">{course.course_title}</h3>
                                         </div>
-                                        <div className="course-card-footer">
-                                            <Link to={`/course/${course.id}`} className="btn-enroll">
-                                                {courseProgress[course.id] ? 'Resume Course' : 'Start Course'}
-                                            </Link>
-                                        </div>
+                                        {user?.role !== 'admin' && (
+                                            <div className="course-card-footer">
+                                                <Link to={`/course/${course.id}`} className="btn-enroll">
+                                                    {courseProgress[course.id] ? 'Resume Course' : 'Start Course'}
+                                                </Link>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

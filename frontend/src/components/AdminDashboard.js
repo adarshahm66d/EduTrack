@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getCurrentUser, getCourses, addYouTubePlaylist } from '../api';
+import { getCurrentUser, getCourses, addYouTubePlaylist, deleteCourse } from '../api';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -11,6 +11,7 @@ const AdminDashboard = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [playlistUrl, setPlaylistUrl] = useState('');
     const [adding, setAdding] = useState(false);
+    const [deletingCourseId, setDeletingCourseId] = useState(null);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const navigate = useNavigate();
 
@@ -83,6 +84,25 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleDeleteCourse = async (courseId, courseTitle) => {
+        if (!window.confirm(`Are you sure you want to delete "${courseTitle}"? This will permanently remove the course and all its videos. This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            setDeletingCourseId(courseId);
+            setError('');
+            await deleteCourse(courseId);
+            // Refresh the course list
+            await fetchCourses();
+        } catch (err) {
+            console.error('Error deleting course:', err);
+            setError(err.response?.data?.detail || 'Failed to delete course. Please try again.');
+        } finally {
+            setDeletingCourseId(null);
+        }
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -119,7 +139,8 @@ const AdminDashboard = () => {
                         <h1>EduTrack Admin</h1>
                     </Link>
                     <div className="nav-right">
-                        <Link to="/dashboard" className="nav-link">Student Dashboard</Link>
+                        <Link to="/dashboard" className="nav-link">Course Dashboard</Link>
+                        <Link to="/students" className="nav-link">Student List</Link>
                         <div className="user-menu-container">
                             <button className="user-menu-button" onClick={toggleUserMenu}>
                                 <div className="user-avatar">
@@ -227,7 +248,7 @@ const AdminDashboard = () => {
                                                 <div className="course-link-info">
                                                     <a 
                                                         href={course.link} 
-                                                        target="_blank" 
+                                                        target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="playlist-link"
                                                     >
@@ -242,9 +263,31 @@ const AdminDashboard = () => {
                                             )}
                                         </div>
                                         <div className="course-card-footer">
-                                            <Link to={`/course/${course.id}`} className="btn-view">
-                                                View Course
-                                            </Link>
+                                            <div className="course-card-actions">
+                                                <Link to={`/course/${course.id}`} className="btn-view">
+                                                    View Course
+                                                </Link>
+                                                <button
+                                                    className="btn-delete"
+                                                    onClick={() => handleDeleteCourse(course.id, course.course_title)}
+                                                    disabled={deletingCourseId === course.id}
+                                                    title="Delete course"
+                                                >
+                                                    {deletingCourseId === course.id ? (
+                                                        'Deleting...'
+                                                    ) : (
+                                                        <>
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                                                            </svg>
+                                                            Delete
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

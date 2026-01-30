@@ -28,8 +28,6 @@ const extractVideoId = (videoIdOrUrl) => {
 
 const VideoPlayer = ({ videoId, videoUrl, onVideoEnd, courseId, videoDbId, onProgressUpdate, onVideoStart }) => {
     const iframeRef = useRef(null);
-    const progressIntervalRef = useRef(null);
-    const lastProgressTimeRef = useRef(0);
     
     // Use videoUrl if provided, otherwise use videoId
     const source = videoUrl || videoId;

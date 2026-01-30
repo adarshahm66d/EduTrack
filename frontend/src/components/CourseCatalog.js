@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCourses, addYouTubePlaylist, getCourseVideos } from '../api';
 import './CourseCatalog.css';
@@ -13,17 +13,13 @@ const CourseCatalog = () => {
     const [adding, setAdding] = useState(false);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        fetchCourses();
-    }, []);
-
     const extractVideoId = (url) => {
         if (!url) return null;
         const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
         return match ? match[1] : null;
     };
 
-    const fetchCourses = async () => {
+    const fetchCourses = useCallback(async () => {
         try {
             setLoading(true);
             const data = await getCourses();
@@ -64,7 +60,11 @@ const CourseCatalog = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchCourses();
+    }, [fetchCourses]);
 
     const handleAddPlaylist = async (e) => {
         e.preventDefault();
