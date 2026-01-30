@@ -76,6 +76,9 @@ const Dashboard = () => {
                         <h1>EduTrack</h1>
                     </Link>
                     <div className="nav-right">
+                        {user?.role === 'admin' && (
+                            <Link to="/admin" className="nav-link">Admin Dashboard</Link>
+                        )}
                         <div className="user-menu-container">
                             <button className="user-menu-button" onClick={toggleUserMenu}>
                                 <div className="user-avatar">
@@ -129,7 +132,12 @@ const Dashboard = () => {
                 </div>
 
                 <section className="courses-section">
-                    <h2 className="section-title">Course Catalog</h2>
+                    <div className="section-header-with-link">
+                        <h2 className="section-title">Course Catalog</h2>
+                        <Link to="/catalog" className="view-all-link">
+                            View All Courses →
+                        </Link>
+                    </div>
 
                     {coursesLoading && (
                         <div className="loading-message">Loading courses...</div>
@@ -144,24 +152,53 @@ const Dashboard = () => {
 
                     {!coursesLoading && courses.length > 0 && (
                         <div className="courses-grid">
-                            {courses.map((course) => (
-                                <div key={course.id} className="course-card">
-                                    <div className="course-card-header">
-                                        <div className="course-icon">📚</div>
-                                        <h3 className="course-title">{course.course_title}</h3>
+                            {courses.map((course) => {
+                                const extractPlaylistId = (url) => {
+                                    if (!url) return null;
+                                    const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+                                    return match ? match[1] : null;
+                                };
+                                const playlistId = course.link ? extractPlaylistId(course.link) : null;
+                                const playlistThumbnail = playlistId ? `https://img.youtube.com/vi_playlist/${playlistId}/mqdefault.jpg` : null;
+                                
+                                return (
+                                    <div key={course.id} className="course-card">
+                                        <div className="course-thumbnail-wrapper">
+                                            {playlistThumbnail ? (
+                                                <img 
+                                                    src={playlistThumbnail} 
+                                                    alt={course.course_title}
+                                                    className="course-thumbnail-img"
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextSibling.style.display = 'flex';
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <div 
+                                                className="course-icon"
+                                                style={{ display: playlistThumbnail ? 'none' : 'flex' }}
+                                            >
+                                                📚
+                                            </div>
+                                            <div className="play-overlay-dashboard">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
+                                                    <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)"/>
+                                                    <polygon points="10,8 16,12 10,16" fill="white"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div className="course-card-header">
+                                            <h3 className="course-title">{course.course_title}</h3>
+                                        </div>
+                                        <div className="course-card-footer">
+                                            <Link to={`/course/${course.id}`} className="btn-enroll">
+                                                Start Course
+                                            </Link>
+                                        </div>
                                     </div>
-                                    <div className="course-card-body">
-                                        <p className="course-description">
-                                            Click below to start learning
-                                        </p>
-                                    </div>
-                                    <div className="course-card-footer">
-                                        <Link to={`/course/${course.id}`} className="btn-enroll">
-                                            Start Course
-                                        </Link>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </section>

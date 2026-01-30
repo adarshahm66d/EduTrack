@@ -65,8 +65,18 @@
 .course-title {
     font-size: clamp(1.8rem, 4vw, 2.5rem);
     color: #333;
-    margin: 0;
+    margin: 0 0 0.5rem 0;
     font-weight: 700;
+}
+
+.course-playlist-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #666;
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 500;
 }
 
 .course-main {
@@ -92,11 +102,61 @@
     border-top: 1px solid #e9ecef;
 }
 
+.video-info-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
 .current-video-title {
     font-size: 1.25rem;
     color: #333;
     margin: 0;
     font-weight: 600;
+}
+
+.video-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.nav-video-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.nav-video-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.nav-video-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #ccc;
+}
+
+.video-counter {
+    font-size: 0.95rem;
+    color: #666;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
 }
 
 .video-list-section {
@@ -108,13 +168,33 @@
     overflow-y: auto;
 }
 
+.video-list-header {
+    margin-bottom: 1.5rem;
+}
+
 .video-list-title {
     font-size: 1.25rem;
     color: #333;
-    margin: 0 0 1.5rem 0;
+    margin: 0 0 1rem 0;
     font-weight: 600;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #e9ecef;
+}
+
+.playlist-search {
+    margin-top: 1rem;
+}
+
+.playlist-search-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.3s;
+}
+
+.playlist-search-input:focus {
+    outline: none;
+    border-color: #667eea;
 }
 
 .video-list {

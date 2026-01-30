@@ -4,7 +4,9 @@ import Landing from './components/Landing';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
+import AdminDashboard from './components/AdminDashboard';
 import CourseDetail from './components/CourseDetail';
+import CourseCatalog from './components/CourseCatalog';
 import './App.css';
 
 function App() {
@@ -34,6 +36,8 @@ function App() {
                     <Route path="/login" element={!token ? <Login onLogin={() => setToken(localStorage.getItem('token'))} /> : <Navigate to="/dashboard" replace />} />
                     <Route path="/signup" element={!token ? <Signup onSignup={() => setToken(localStorage.getItem('token'))} /> : <Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={token ? <Dashboard /> : <Navigate to="/login" replace />} />
+                    <Route path="/admin" element={token ? <AdminDashboard /> : <Navigate to="/login" replace />} />
+                    <Route path="/catalog" element={token ? <CourseCatalog /> : <Navigate to="/login" replace />} />
                     <Route path="/course/:courseId" element={token ? <CourseDetail /> : <Navigate to="/login" replace />} />
                 </Routes>
             </div>

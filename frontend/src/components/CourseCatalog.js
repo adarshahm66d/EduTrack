@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCourses, addYouTubePlaylist } from '../api';
+import { getCourses, addYouTubePlaylist, getCourseVideos } from '../api';
 import './CourseCatalog.css';
 
 const CourseCatalog = () => {
     const [courses, setCourses] = useState([]);
+    const [courseThumbnails, setCourseThumbnails] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
@@ -16,11 +17,46 @@ const CourseCatalog = () => {
         fetchCourses();
     }, []);
 
+    const extractVideoId = (url) => {
+        if (!url) return null;
+        const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+        return match ? match[1] : null;
+    };
+
     const fetchCourses = async () => {
         try {
             setLoading(true);
             const data = await getCourses();
             setCourses(data);
+            
+            // Fetch thumbnails for each course in parallel
+            const thumbnailPromises = data.map(async (course) => {
+                try {
+                    const videos = await getCourseVideos(course.id);
+                    if (videos && videos.length > 0 && videos[0].video_link) {
+                        const videoId = extractVideoId(videos[0].video_link);
+                        if (videoId) {
+                            return {
+                                courseId: course.id,
+                                thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                            };
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Error fetching videos for course ${course.id}:`, err);
+                }
+                return { courseId: course.id, thumbnail: null };
+            });
+            
+            const thumbnailResults = await Promise.all(thumbnailPromises);
+            const thumbnailMap = {};
+            thumbnailResults.forEach(({ courseId, thumbnail }) => {
+                if (thumbnail) {
+                    thumbnailMap[courseId] = thumbnail;
+                }
+            });
+            
+            setCourseThumbnails(thumbnailMap);
             setError('');
         } catch (err) {
             console.error('Error fetching courses:', err);
@@ -57,6 +93,7 @@ const CourseCatalog = () => {
         navigate(`/course/${courseId}`);
     };
 
+
     if (loading) {
         return (
             <div className="catalog-container">
@@ -73,7 +110,7 @@ const CourseCatalog = () => {
                     className="add-course-btn"
                     onClick={() => setShowAddForm(!showAddForm)}
                 >
-                    {showAddForm ? 'Cancel' : '+ Add YouTube Playlist'}
+                    {showAddForm ? 'Cancel' : '+ Add Courses'}
                 </button>
             </div>
 
@@ -111,34 +148,73 @@ const CourseCatalog = () => {
                 </div>
             ) : (
                 <div className="courses-grid">
-                    {courses.map((course) => (
-                        <div
-                            key={course.id}
-                            className="course-card"
-                            onClick={() => handleCourseClick(course.id)}
-                        >
-                            <div className="course-icon">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="9" y1="9" x2="15" y2="9"></line>
-                                    <line x1="9" y1="15" x2="15" y2="15"></line>
-                                </svg>
-                            </div>
-                            <h3 className="course-title">{course.course_title}</h3>
-                            {course.link && (
-                                <p className="course-link">
-                                    <a 
-                                        href={course.link} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
+                    {courses.map((course) => {
+                        const thumbnail = courseThumbnails[course.id] || null;
+                        return (
+                            <div
+                                key={course.id}
+                                className="course-card"
+                                onClick={() => handleCourseClick(course.id)}
+                            >
+                                <div className="course-thumbnail-container">
+                                    {thumbnail ? (
+                                        <img 
+                                            src={thumbnail} 
+                                            alt={course.course_title}
+                                            className="course-thumbnail"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                e.target.nextSibling.style.display = 'flex';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <div 
+                                        className="course-icon"
+                                        style={{ display: thumbnail ? 'none' : 'flex' }}
                                     >
-                                        View on YouTube →
-                                    </a>
-                                </p>
-                            )}
-                        </div>
-                    ))}
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="9" y1="9" x2="15" y2="9"></line>
+                                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <div className="play-overlay">
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
+                                            <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)"/>
+                                            <polygon points="10,8 16,12 10,16" fill="white"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div className="course-card-content">
+                                    <h3 className="course-title">{course.course_title}</h3>
+                                    {course.link && (
+                                        <div className="course-link-container">
+                                            <button
+                                                className="copy-link-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigator.clipboard.writeText(course.link);
+                                                    const btn = e.target;
+                                                    const originalText = btn.textContent;
+                                                    btn.textContent = 'Copied!';
+                                                    setTimeout(() => {
+                                                        btn.textContent = originalText;
+                                                    }, 2000);
+                                                }}
+                                                title="Copy playlist link"
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                                </svg>
+                                                Copy Link
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

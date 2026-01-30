@@ -10,6 +10,8 @@ const CourseDetail = () => {
     const [course, setCourse] = useState(null);
     const [videos, setVideos] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState(null);
+    const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
+    const [playlistSearch, setPlaylistSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -25,6 +27,7 @@ const CourseDetail = () => {
                 setVideos(videosData);
                 if (videosData.length > 0) {
                     setSelectedVideo(videosData[0]);
+                    setSelectedVideoIndex(0);
                 }
             } catch (err) {
                 setError('Failed to load course. Please try again.');
@@ -64,6 +67,34 @@ const CourseDetail = () => {
         return null;
     };
 
+    const handleVideoSelect = (video, index) => {
+        setSelectedVideo(video);
+        setSelectedVideoIndex(index);
+        // Scroll to top of video player
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleNextVideo = () => {
+        if (selectedVideoIndex < videos.length - 1) {
+            const nextIndex = selectedVideoIndex + 1;
+            handleVideoSelect(videos[nextIndex], nextIndex);
+        }
+    };
+
+    const handlePreviousVideo = () => {
+        if (selectedVideoIndex > 0) {
+            const prevIndex = selectedVideoIndex - 1;
+            handleVideoSelect(videos[prevIndex], prevIndex);
+        }
+    };
+
+    const handleVideoEnd = () => {
+        // Auto-play next video when current video ends
+        if (selectedVideoIndex < videos.length - 1) {
+            handleNextVideo();
+        }
+    };
+
     if (loading) {
         return (
             <div className="course-detail-loading">
@@ -97,6 +128,16 @@ const CourseDetail = () => {
             <div className="course-content">
                 <div className="course-header">
                     <h1 className="course-title">{course.course_title}</h1>
+                    {course.link && (
+                        <p className="course-playlist-info">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="9" y1="9" x2="15" y2="9"></line>
+                                <line x1="9" y1="15" x2="15" y2="15"></line>
+                            </svg>
+                            YouTube Playlist Course
+                        </p>
+                    )}
                 </div>
 
                 <div className="course-main">
@@ -106,9 +147,39 @@ const CourseDetail = () => {
                                 <VideoPlayer
                                     videoId={extractVideoId(selectedVideo.video_link)}
                                     videoUrl={selectedVideo.video_link}
+                                    onVideoEnd={handleVideoEnd}
                                 />
                                 <div className="video-info">
-                                    <h2 className="current-video-title">{selectedVideo.title}</h2>
+                                    <div className="video-info-header">
+                                        <h2 className="current-video-title">{selectedVideo.title}</h2>
+                                        <div className="video-navigation">
+                                            <button
+                                                className="nav-video-btn"
+                                                onClick={handlePreviousVideo}
+                                                disabled={selectedVideoIndex === 0}
+                                                title="Previous video"
+                                            >
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <polyline points="15 18 9 12 15 6"></polyline>
+                                                </svg>
+                                                Previous
+                                            </button>
+                                            <span className="video-counter">
+                                                {selectedVideoIndex + 1} / {videos.length}
+                                            </span>
+                                            <button
+                                                className="nav-video-btn"
+                                                onClick={handleNextVideo}
+                                                disabled={selectedVideoIndex === videos.length - 1}
+                                                title="Next video"
+                                            >
+                                                Next
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -120,18 +191,37 @@ const CourseDetail = () => {
                     </div>
 
                     <div className="video-list-section">
-                        <h3 className="video-list-title">Course Videos ({videos.length})</h3>
+                        <div className="video-list-header">
+                            <h3 className="video-list-title">Course Videos ({videos.length})</h3>
+                            {videos.length > 5 && (
+                                <div className="playlist-search">
+                                    <input
+                                        type="text"
+                                        placeholder="Search videos..."
+                                        value={playlistSearch}
+                                        onChange={(e) => setPlaylistSearch(e.target.value)}
+                                        className="playlist-search-input"
+                                    />
+                                </div>
+                            )}
+                        </div>
                         <div className="video-list">
-                            {videos.map((video, index) => {
+                            {videos
+                                .filter((video) => 
+                                    playlistSearch === '' || 
+                                    video.title.toLowerCase().includes(playlistSearch.toLowerCase())
+                                )
+                                .map((video, index) => {
+                                const originalIndex = videos.indexOf(video);
                                 const videoId = extractVideoId(video.video_link);
                                 const isSelected = selectedVideo && selectedVideo.id === video.id;
                                 return (
                                     <div
                                         key={video.id}
                                         className={`video-item ${isSelected ? 'active' : ''}`}
-                                        onClick={() => setSelectedVideo(video)}
+                                        onClick={() => handleVideoSelect(video, originalIndex)}
                                     >
-                                        <div className="video-item-number">{index + 1}</div>
+                                        <div className="video-item-number">{originalIndex + 1}</div>
                                         <div className="video-item-thumbnail">
                                             {videoId ? (
                                                 <img
