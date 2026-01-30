@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getCurrentUser, getCourses } from '../api';
+import { getCurrentUser, getCourses, getCourseVideos, getCourseProgress } from '../api';
 import './Dashboard.css';
 
 const Dashboard = () => {
     const [user, setUser] = useState(null);
     const [courses, setCourses] = useState([]);
+    const [courseThumbnails, setCourseThumbnails] = useState({});
+    const [courseProgress, setCourseProgress] = useState({});
     const [loading, setLoading] = useState(true);
     const [coursesLoading, setCoursesLoading] = useState(true);
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -18,6 +20,12 @@ const Dashboard = () => {
             return;
         }
 
+        const extractVideoId = (url) => {
+            if (!url) return null;
+            const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+            return match ? match[1] : null;
+        };
+
         const fetchData = async () => {
             try {
                 const [userData, coursesData] = await Promise.all([
@@ -26,6 +34,57 @@ const Dashboard = () => {
                 ]);
                 setUser(userData);
                 setCourses(coursesData);
+                
+                // Fetch thumbnails for each course in parallel
+                const thumbnailPromises = coursesData.map(async (course) => {
+                    try {
+                        const videos = await getCourseVideos(course.id);
+                        if (videos && videos.length > 0 && videos[0].video_link) {
+                            const videoId = extractVideoId(videos[0].video_link);
+                            if (videoId) {
+                                return {
+                                    courseId: course.id,
+                                    thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                                };
+                            }
+                        }
+                    } catch (err) {
+                        console.error(`Error fetching videos for course ${course.id}:`, err);
+                    }
+                    return { courseId: course.id, thumbnail: null };
+                });
+                
+                const thumbnailResults = await Promise.all(thumbnailPromises);
+                const thumbnailMap = {};
+                thumbnailResults.forEach(({ courseId, thumbnail }) => {
+                    if (thumbnail) {
+                        thumbnailMap[courseId] = thumbnail;
+                    }
+                });
+                
+                setCourseThumbnails(thumbnailMap);
+                
+                // Fetch progress for each course
+                const progressPromises = coursesData.map(async (course) => {
+                    try {
+                        const progress = await getCourseProgress(course.id);
+                        return {
+                            courseId: course.id,
+                            hasProgress: progress.has_progress
+                        };
+                    } catch (err) {
+                        console.error(`Error fetching progress for course ${course.id}:`, err);
+                        return { courseId: course.id, hasProgress: false };
+                    }
+                });
+                
+                const progressResults = await Promise.all(progressPromises);
+                const progressMap = {};
+                progressResults.forEach(({ courseId, hasProgress }) => {
+                    progressMap[courseId] = hasProgress;
+                });
+                
+                setCourseProgress(progressMap);
             } catch (err) {
                 console.error('Failed to fetch data:', err);
                 localStorage.removeItem('token');
@@ -153,20 +212,14 @@ const Dashboard = () => {
                     {!coursesLoading && courses.length > 0 && (
                         <div className="courses-grid">
                             {courses.map((course) => {
-                                const extractPlaylistId = (url) => {
-                                    if (!url) return null;
-                                    const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-                                    return match ? match[1] : null;
-                                };
-                                const playlistId = course.link ? extractPlaylistId(course.link) : null;
-                                const playlistThumbnail = playlistId ? `https://img.youtube.com/vi_playlist/${playlistId}/mqdefault.jpg` : null;
+                                const thumbnail = courseThumbnails[course.id] || null;
                                 
                                 return (
                                     <div key={course.id} className="course-card">
                                         <div className="course-thumbnail-wrapper">
-                                            {playlistThumbnail ? (
+                                            {thumbnail ? (
                                                 <img 
-                                                    src={playlistThumbnail} 
+                                                    src={thumbnail} 
                                                     alt={course.course_title}
                                                     className="course-thumbnail-img"
                                                     onError={(e) => {
@@ -177,7 +230,7 @@ const Dashboard = () => {
                                             ) : null}
                                             <div 
                                                 className="course-icon"
-                                                style={{ display: playlistThumbnail ? 'none' : 'flex' }}
+                                                style={{ display: thumbnail ? 'none' : 'flex' }}
                                             >
                                                 📚
                                             </div>
@@ -193,7 +246,7 @@ const Dashboard = () => {
                                         </div>
                                         <div className="course-card-footer">
                                             <Link to={`/course/${course.id}`} className="btn-enroll">
-                                                Start Course
+                                                {courseProgress[course.id] ? 'Resume Course' : 'Start Course'}
                                             </Link>
                                         </div>
                                     </div>

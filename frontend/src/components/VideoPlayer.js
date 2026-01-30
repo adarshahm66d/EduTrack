@@ -26,8 +26,10 @@ const extractVideoId = (videoIdOrUrl) => {
     return null;
 };
 
-const VideoPlayer = ({ videoId, videoUrl, onVideoEnd }) => {
+const VideoPlayer = ({ videoId, videoUrl, onVideoEnd, courseId, videoDbId, onProgressUpdate, onVideoStart }) => {
     const iframeRef = useRef(null);
+    const progressIntervalRef = useRef(null);
+    const lastProgressTimeRef = useRef(0);
     
     // Use videoUrl if provided, otherwise use videoId
     const source = videoUrl || videoId;
@@ -45,6 +47,10 @@ const VideoPlayer = ({ videoId, videoUrl, onVideoEnd }) => {
                     if (data.info === 0 && onVideoEnd) {
                         onVideoEnd();
                     }
+                    // Start tracking when video starts playing
+                    if (data.info === 1 && onVideoStart) {
+                        onVideoStart();
+                    }
                 }
             } catch (e) {
                 // Ignore parse errors
@@ -53,7 +59,7 @@ const VideoPlayer = ({ videoId, videoUrl, onVideoEnd }) => {
         
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [onVideoEnd]);
+    }, [onVideoEnd, onVideoStart]);
     
     if (!extractedId) {
         return (

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getCourse, getCourseVideos } from '../api';
+import { getCourse, getCourseVideos, updateVideoProgress } from '../api';
 import VideoPlayer from './VideoPlayer';
 import './CourseDetail.css';
 
@@ -14,6 +14,8 @@ const CourseDetail = () => {
     const [playlistSearch, setPlaylistSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const watchStartTimeRef = useRef(null);
+    const progressIntervalRef = useRef(null);
 
     useEffect(() => {
         const fetchCourseData = async () => {
@@ -95,6 +97,42 @@ const CourseDetail = () => {
         }
     };
 
+    const handleProgressUpdate = async (courseId, videoId, watchTime) => {
+        try {
+            await updateVideoProgress(courseId, videoId, watchTime);
+        } catch (err) {
+            console.error('Error updating progress:', err);
+        }
+    };
+
+    const handleVideoStart = () => {
+        // Start tracking watch time when video starts playing
+        watchStartTimeRef.current = Date.now();
+        
+        if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+        }
+        
+        progressIntervalRef.current = setInterval(() => {
+            if (watchStartTimeRef.current && selectedVideo) {
+                const elapsedSeconds = Math.floor((Date.now() - watchStartTimeRef.current) / 1000);
+                if (elapsedSeconds >= 10) {
+                    // Update progress after 10 seconds
+                    handleProgressUpdate(parseInt(courseId), selectedVideo.id, elapsedSeconds);
+                }
+            }
+        }, 5000); // Check every 5 seconds
+    };
+
+    useEffect(() => {
+        // Clean up interval on unmount
+        return () => {
+            if (progressIntervalRef.current) {
+                clearInterval(progressIntervalRef.current);
+            }
+        };
+    }, []);
+
     if (loading) {
         return (
             <div className="course-detail-loading">
@@ -148,6 +186,10 @@ const CourseDetail = () => {
                                     videoId={extractVideoId(selectedVideo.video_link)}
                                     videoUrl={selectedVideo.video_link}
                                     onVideoEnd={handleVideoEnd}
+                                    courseId={parseInt(courseId)}
+                                    videoDbId={selectedVideo.id}
+                                    onProgressUpdate={handleProgressUpdate}
+                                    onVideoStart={handleVideoStart}
                                 />
                                 <div className="video-info">
                                     <div className="video-info-header">

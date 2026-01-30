@@ -124,21 +124,22 @@
 
 .courses-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.5rem;
     width: 100%;
 }
 
 .course-card {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     transition: all 0.3s;
     display: flex;
     flex-direction: column;
     width: 100%;
-    min-height: 280px;
+    min-height: 200px;
+    max-height: 400px;
 }
 
 .course-card:hover {
@@ -147,36 +148,108 @@
 }
 
 .course-card-header {
-    padding: 2rem;
+    position: relative;
+    padding: 0;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     text-align: center;
-    min-height: 150px;
+    min-height: 120px;
+    max-height: 140px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
+}
+
+.course-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .course-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
 }
 
 .course-title {
-    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-size: clamp(0.95rem, 1.5vw, 1.2rem);
     font-weight: 600;
-    margin: 0;
-    line-height: 1.4;
+    margin: 0 0 0.75rem 0;
+    line-height: 1.3;
     word-wrap: break-word;
+    color: #333;
+    text-align: center;
 }
 
 .course-card-body {
-    padding: 1.5rem;
+    padding: 1rem 1.25rem;
     flex: 1;
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
+    min-height: 60px;
+}
+
+.course-card-body .course-title {
+    margin-bottom: 0.5rem;
+}
+
+.course-description {
+    color: #555;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.course-description p {
+    margin: 0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.btn-show-details {
+    background: transparent;
+    border: 1px solid #667eea;
+    color: #667eea;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.btn-show-details:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.details-arrow {
+    font-size: 0.75rem;
+    transition: transform 0.3s;
 }
 
 .course-link {
@@ -194,7 +267,7 @@
 }
 
 .course-card-footer {
-    padding: 1.5rem;
+    padding: 1rem 1.25rem;
     border-top: 1px solid #e9ecef;
     width: 100%;
 }
@@ -202,13 +275,14 @@
 .btn-enroll {
     display: block;
     width: 100%;
-    padding: 0.75rem 1.5rem;
+    padding: 0.6rem 1rem;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     text-decoration: none;
     text-align: center;
-    border-radius: 8px;
+    border-radius: 6px;
     font-weight: 600;
+    font-size: 0.9rem;
     transition: all 0.3s;
     box-sizing: border-box;
 }
@@ -270,8 +344,8 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
     .courses-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 1.25rem;
     }
 
     .courses-section {
@@ -316,25 +390,26 @@
     }
 
     .course-card {
-        min-height: 250px;
+        min-height: 180px;
+        max-height: none;
     }
 
     .course-card-header {
-        padding: 1.5rem;
-        min-height: 120px;
+        padding: 1rem;
+        min-height: 90px;
     }
 
     .course-icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
+        font-size: 1.75rem;
+        margin-bottom: 0.4rem;
     }
 
     .course-card-body {
-        padding: 1rem;
+        padding: 0.875rem;
     }
 
     .course-card-footer {
-        padding: 1rem;
+        padding: 0.875rem;
     }
 
     .section-title {
@@ -363,13 +438,17 @@
         padding: 1.5rem 1rem;
     }
 
+    .course-card {
+        min-height: 160px;
+    }
+
     .course-card-header {
-        padding: 1.25rem;
-        min-height: 100px;
+        padding: 0.875rem;
+        min-height: 80px;
     }
 
     .course-icon {
-        font-size: 2rem;
+        font-size: 1.5rem;
     }
 
     .course-card-body {
@@ -381,8 +460,13 @@
     }
 
     .btn-enroll {
-        padding: 0.6rem 1rem;
-        font-size: 0.9rem;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.85rem;
+    }
+
+    .btn-show-details {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
     }
 
     .footer-content {
@@ -393,7 +477,7 @@
 /* Extra large screens */
 @media (min-width: 1400px) {
     .courses-grid {
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     }
 }
 

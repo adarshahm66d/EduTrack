@@ -48,3 +48,25 @@ class CourseVideoResponse(BaseModel):
 
 class YouTubePlaylistRequest(BaseModel):
     playlist_url: str
+
+class VideoProgressRequest(BaseModel):
+    course_id: int
+    video_id: int
+    watch_time: int  # Time in seconds
+
+class VideoProgressResponse(BaseModel):
+    course_id: int
+    video_id: int
+    watch_time: int
+    last_updated: datetime
+    
+    class Config:
+        from_attributes = True
+
+class CourseProgressResponse(BaseModel):
+    course_id: int
+    total_watch_time: int  # Total watch time across all videos in seconds
+    has_progress: bool  # True if user has watched 10+ seconds
+    
+    class Config:
+        from_attributes = True

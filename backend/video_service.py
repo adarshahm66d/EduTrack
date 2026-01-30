@@ -1,12 +1,43 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
-from models import CourseVideo, Course
-from schemas import CourseVideoResponse, YouTubePlaylistRequest, CourseResponse
+from sqlalchemy import func
+from models import CourseVideo, Course, VideoProgress, User
+from schemas import CourseVideoResponse, YouTubePlaylistRequest, CourseResponse, VideoProgressRequest, VideoProgressResponse, CourseProgressResponse
 from database import get_db
+from auth import verify_token
 import yt_dlp
 import re
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
+
+def get_current_user_id(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """Get current user ID from authorization token"""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing"
+        )
+    
+    try:
+        token = authorization.replace("Bearer ", "")
+        payload = verify_token(token)
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found in token"
+            )
+        return user_id
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
 
 @router.get("/course/{course_id}", response_model=list[CourseVideoResponse])
 def get_course_videos(course_id: int, db: Session = Depends(get_db)):
@@ -103,6 +134,62 @@ def add_youtube_playlist(playlist_data: YouTubePlaylistRequest, db: Session = De
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing playlist: {str(e)}"
         )
+
+@router.post("/progress", response_model=VideoProgressResponse)
+def update_video_progress(
+    progress_data: VideoProgressRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """Update or create video watch progress"""
+    existing_progress = db.query(VideoProgress).filter(
+        VideoProgress.user_id == user_id,
+        VideoProgress.course_id == progress_data.course_id,
+        VideoProgress.video_id == progress_data.video_id
+    ).first()
+    
+    if existing_progress:
+        existing_progress.watch_time = max(existing_progress.watch_time, progress_data.watch_time)
+    else:
+        new_progress = VideoProgress(
+            user_id=user_id,
+            course_id=progress_data.course_id,
+            video_id=progress_data.video_id,
+            watch_time=progress_data.watch_time
+        )
+        db.add(new_progress)
+        existing_progress = new_progress
+    
+    db.commit()
+    db.refresh(existing_progress)
+    
+    return {
+        "course_id": existing_progress.course_id,
+        "video_id": existing_progress.video_id,
+        "watch_time": existing_progress.watch_time,
+        "last_updated": existing_progress.last_updated
+    }
+
+@router.get("/course/{course_id}/progress", response_model=CourseProgressResponse)
+def get_course_progress(
+    course_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """Get total watch progress for a course"""
+    progress_records = db.query(VideoProgress).filter(
+        VideoProgress.user_id == user_id,
+        VideoProgress.course_id == course_id
+    ).all()
+    
+    total_watch_time = sum(record.watch_time for record in progress_records)
+    has_progress = total_watch_time >= 10  # 10 seconds threshold
+    
+    return {
+        "course_id": course_id,
+        "total_watch_time": total_watch_time,
+        "has_progress": has_progress
+    }
 
 @router.get("/health")
 def health_check():

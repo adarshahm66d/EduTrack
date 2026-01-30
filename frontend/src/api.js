@@ -9,6 +9,15 @@ const api = axios.create({
     },
 });
 
+// Add token to requests if available
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 // Auth Service API
 export const signup = async (userData) => {
     const response = await api.post('/auth/signup', userData);
@@ -48,6 +57,21 @@ export const addYouTubePlaylist = async (playlistUrl) => {
     const response = await api.post('/videos/youtube-playlist', {
         playlist_url: playlistUrl,
     });
+    return response.data;
+};
+
+// Progress Tracking API
+export const updateVideoProgress = async (courseId, videoId, watchTime) => {
+    const response = await api.post('/videos/progress', {
+        course_id: courseId,
+        video_id: videoId,
+        watch_time: watchTime,
+    });
+    return response.data;
+};
+
+export const getCourseProgress = async (courseId) => {
+    const response = await api.get(`/videos/course/${courseId}/progress`);
     return response.data;
 };
 
