@@ -35,7 +35,7 @@ function App() {
                 <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/login" element={!token ? <Login onLogin={() => setToken(localStorage.getItem('token'))} /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="/signup" element={!token ? <Signup onSignup={() => setToken(localStorage.getItem('token'))} /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="/signup" element={!token ? <Signup /> : <Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={token ? <Dashboard /> : <Navigate to="/login" replace />} />
                     <Route path="/admin" element={token ? <AdminDashboard /> : <Navigate to="/login" replace />} />
                     <Route path="/students" element={token ? <StudentList /> : <Navigate to="/login" replace />} />

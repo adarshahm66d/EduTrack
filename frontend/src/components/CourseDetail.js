@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getCourse, getCourseVideos, updateVideoProgress } from '../api';
+import { getCourse, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse } from '../api';
 import VideoPlayer from './VideoPlayer';
 import './CourseDetail.css';
 
@@ -13,13 +13,35 @@ const CourseDetail = () => {
     const [playlistSearch, setPlaylistSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const watchStartTimeRef = useRef(null);
-    const progressIntervalRef = useRef(null);
+    const [user, setUser] = useState(null);
+    const [isRegistered, setIsRegistered] = useState(false);
+    const [checkingRegistration, setCheckingRegistration] = useState(true);
+    const [registering, setRegistering] = useState(false);
 
     useEffect(() => {
         const fetchCourseData = async () => {
             try {
                 setLoading(true);
+                setCheckingRegistration(true);
+                
+                // Get user info
+                const userData = await getCurrentUser();
+                setUser(userData);
+                
+                // Check registration if student
+                if (userData.role === 'student') {
+                    try {
+                        const registration = await getCourseRegistration(courseId);
+                        setIsRegistered(registration.enrolled);
+                    } catch (err) {
+                        console.error('Error checking registration:', err);
+                        setIsRegistered(false);
+                    }
+                } else {
+                    // Admin can always access
+                    setIsRegistered(true);
+                }
+                
                 const [courseData, videosData] = await Promise.all([
                     getCourse(courseId),
                     getCourseVideos(courseId)
@@ -35,11 +57,25 @@ const CourseDetail = () => {
                 console.error('Error fetching course:', err);
             } finally {
                 setLoading(false);
+                setCheckingRegistration(false);
             }
         };
 
         fetchCourseData();
     }, [courseId]);
+    
+    const handleRegister = async () => {
+        try {
+            setRegistering(true);
+            await registerForCourse(courseId);
+            setIsRegistered(true);
+        } catch (err) {
+            console.error('Error registering for course:', err);
+            alert(err.response?.data?.detail || 'Failed to register for course. Please try again.');
+        } finally {
+            setRegistering(false);
+        }
+    };
 
     const extractVideoId = (url) => {
         if (!url) return null;
@@ -96,42 +132,6 @@ const CourseDetail = () => {
         }
     };
 
-    const handleProgressUpdate = async (courseId, videoId, watchTime) => {
-        try {
-            await updateVideoProgress(courseId, videoId, watchTime);
-        } catch (err) {
-            console.error('Error updating progress:', err);
-        }
-    };
-
-    const handleVideoStart = () => {
-        // Start tracking watch time when video starts playing
-        watchStartTimeRef.current = Date.now();
-        
-        if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current);
-        }
-        
-        progressIntervalRef.current = setInterval(() => {
-            if (watchStartTimeRef.current && selectedVideo) {
-                const elapsedSeconds = Math.floor((Date.now() - watchStartTimeRef.current) / 1000);
-                if (elapsedSeconds >= 10) {
-                    // Update progress after 10 seconds
-                    handleProgressUpdate(parseInt(courseId), selectedVideo.id, elapsedSeconds);
-                }
-            }
-        }, 5000); // Check every 5 seconds
-    };
-
-    useEffect(() => {
-        // Clean up interval on unmount
-        return () => {
-            if (progressIntervalRef.current) {
-                clearInterval(progressIntervalRef.current);
-            }
-        };
-    }, []);
-
     if (loading) {
         return (
             <div className="course-detail-loading">
@@ -145,6 +145,43 @@ const CourseDetail = () => {
             <div className="course-detail-error">
                 <p>{error || 'Course not found'}</p>
                 <Link to="/dashboard" className="btn-back">Back to Dashboard</Link>
+            </div>
+        );
+    }
+
+    // Show registration prompt for students who haven't registered
+    if (user?.role === 'student' && !checkingRegistration && !isRegistered) {
+        return (
+            <div className="course-detail">
+                <nav className="course-nav">
+                    <div className="nav-container">
+                        <Link to="/dashboard" className="logo-link">
+                            <h1>EduTrack</h1>
+                        </Link>
+                        <div className="nav-links">
+                            <Link to="/dashboard" className="nav-link">Back to Dashboard</Link>
+                        </div>
+                    </div>
+                </nav>
+                <div className="course-content">
+                    <div className="course-header">
+                        <h1 className="course-title">{course.course_title}</h1>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '3rem', maxWidth: '600px', margin: '0 auto' }}>
+                        <h2>Registration Required</h2>
+                        <p style={{ marginBottom: '2rem', color: '#666' }}>
+                            You need to register for this course before you can access the videos.
+                        </p>
+                        <button 
+                            className="btn-enroll"
+                            onClick={handleRegister}
+                            disabled={registering}
+                            style={{ fontSize: '1.1rem', padding: '0.75rem 2rem' }}
+                        >
+                            {registering ? 'Registering...' : 'Register for Course'}
+                        </button>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -185,10 +222,6 @@ const CourseDetail = () => {
                                     videoId={extractVideoId(selectedVideo.video_link)}
                                     videoUrl={selectedVideo.video_link}
                                     onVideoEnd={handleVideoEnd}
-                                    courseId={parseInt(courseId)}
-                                    videoDbId={selectedVideo.id}
-                                    onProgressUpdate={handleProgressUpdate}
-                                    onVideoStart={handleVideoStart}
                                 />
                                 <div className="video-info">
                                     <div className="video-info-header">
@@ -248,40 +281,40 @@ const CourseDetail = () => {
                         </div>
                         <div className="video-list">
                             {videos
-                                .filter((video) => 
-                                    playlistSearch === '' || 
+                                .filter((video) =>
+                                    playlistSearch === '' ||
                                     video.title.toLowerCase().includes(playlistSearch.toLowerCase())
                                 )
                                 .map((video, index) => {
-                                const originalIndex = videos.indexOf(video);
-                                const videoId = extractVideoId(video.video_link);
-                                const isSelected = selectedVideo && selectedVideo.id === video.id;
-                                return (
-                                    <div
-                                        key={video.id}
-                                        className={`video-item ${isSelected ? 'active' : ''}`}
-                                        onClick={() => handleVideoSelect(video, originalIndex)}
-                                    >
-                                        <div className="video-item-number">{originalIndex + 1}</div>
-                                        <div className="video-item-thumbnail">
-                                            {videoId ? (
-                                                <img
-                                                    src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
-                                                    alt={video.title}
-                                                    onError={(e) => {
-                                                        e.target.src = 'https://via.placeholder.com/160x90?text=Video';
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div className="thumbnail-placeholder">📹</div>
-                                            )}
+                                    const originalIndex = videos.indexOf(video);
+                                    const videoId = extractVideoId(video.video_link);
+                                    const isSelected = selectedVideo && selectedVideo.id === video.id;
+                                    return (
+                                        <div
+                                            key={video.id}
+                                            className={`video-item ${isSelected ? 'active' : ''}`}
+                                            onClick={() => handleVideoSelect(video, originalIndex)}
+                                        >
+                                            <div className="video-item-number">{originalIndex + 1}</div>
+                                            <div className="video-item-thumbnail">
+                                                {videoId ? (
+                                                    <img
+                                                        src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                                                        alt={video.title}
+                                                        onError={(e) => {
+                                                            e.target.src = 'https://via.placeholder.com/160x90?text=Video';
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="thumbnail-placeholder">📹</div>
+                                                )}
+                                            </div>
+                                            <div className="video-item-info">
+                                                <h4 className="video-item-title">{video.title}</h4>
+                                            </div>
                                         </div>
-                                        <div className="video-item-info">
-                                            <h4 className="video-item-title">{video.title}</h4>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
                         </div>
                     </div>
                 </div>

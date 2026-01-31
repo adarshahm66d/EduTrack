@@ -10,7 +10,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT settings
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Token expires in 24 hours (1440 minutes) - users stay logged in for a day
+ACCESS_TOKEN_EXPIRE_MINUTES = 24 * 60  # 24 hours = 1440 minutes
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""

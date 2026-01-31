@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCourses, addYouTubePlaylist, getCourseVideos } from '../api';
+import { getCourses, addYouTubePlaylist, getCourseVideos, getCurrentUser } from '../api';
 import './CourseCatalog.css';
 
 const CourseCatalog = () => {
     const [courses, setCourses] = useState([]);
     const [courseThumbnails, setCourseThumbnails] = useState({});
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
@@ -63,6 +64,20 @@ const CourseCatalog = () => {
     }, []);
 
     useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    const userData = await getCurrentUser();
+                    setUser(userData);
+                }
+            } catch (err) {
+                // User not logged in or token expired - that's okay for catalog
+                console.log('User not authenticated');
+            }
+        };
+        
+        fetchUser();
         fetchCourses();
     }, [fetchCourses]);
 
@@ -106,15 +121,17 @@ const CourseCatalog = () => {
         <div className="catalog-container">
             <div className="catalog-header">
                 <h1>Course Catalog</h1>
-                <button 
-                    className="add-course-btn"
-                    onClick={() => setShowAddForm(!showAddForm)}
-                >
-                    {showAddForm ? 'Cancel' : '+ Add Courses'}
-                </button>
+                {user?.role === 'admin' && (
+                    <button 
+                        className="add-course-btn"
+                        onClick={() => setShowAddForm(!showAddForm)}
+                    >
+                        {showAddForm ? 'Cancel' : '+ Add Courses'}
+                    </button>
+                )}
             </div>
 
-            {showAddForm && (
+            {showAddForm && user?.role === 'admin' && (
                 <div className="add-playlist-form">
                     <h3>Add Course from YouTube Playlist</h3>
                     <form onSubmit={handleAddPlaylist}>

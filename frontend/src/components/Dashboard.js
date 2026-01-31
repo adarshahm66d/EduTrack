@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getCurrentUser, getCourses, getCourseVideos, getCourseProgress } from '../api';
+import { getCurrentUser, getCourses, getCourseVideos, getCourseRegistration, registerForCourse } from '../api';
 import './Dashboard.css';
 
 const Dashboard = () => {
     const [user, setUser] = useState(null);
     const [courses, setCourses] = useState([]);
     const [courseThumbnails, setCourseThumbnails] = useState({});
-    const [courseProgress, setCourseProgress] = useState({});
+    const [courseRegistrations, setCourseRegistrations] = useState({});
     const [loading, setLoading] = useState(true);
     const [coursesLoading, setCoursesLoading] = useState(true);
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const [registeringCourseId, setRegisteringCourseId] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -22,7 +23,7 @@ const Dashboard = () => {
 
         const extractVideoId = (url) => {
             if (!url) return null;
-            
+
             // Try multiple patterns to extract video ID
             const patterns = [
                 /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
@@ -30,26 +31,26 @@ const Dashboard = () => {
                 /youtu\.be\/([a-zA-Z0-9_-]{11})/,
                 /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
             ];
-            
+
             for (const pattern of patterns) {
                 const match = url.match(pattern);
                 if (match && match[1]) {
                     return match[1];
                 }
             }
-            
+
             return null;
         };
 
         const fetchData = async () => {
             try {
                 const [userData, coursesData] = await Promise.all([
-                    getCurrentUser(token),
+                    getCurrentUser(),
                     getCourses()
                 ]);
                 setUser(userData);
                 setCourses(coursesData);
-                
+
                 // Fetch thumbnails for each course in parallel
                 const thumbnailPromises = coursesData.map(async (course) => {
                     try {
@@ -73,7 +74,7 @@ const Dashboard = () => {
                     }
                     return { courseId: course.id, thumbnail: null };
                 });
-                
+
                 const thumbnailResults = await Promise.all(thumbnailPromises);
                 const thumbnailMap = {};
                 thumbnailResults.forEach(({ courseId, thumbnail }) => {
@@ -81,30 +82,32 @@ const Dashboard = () => {
                         thumbnailMap[courseId] = thumbnail;
                     }
                 });
-                
+
                 setCourseThumbnails(thumbnailMap);
-                
-                // Fetch progress for each course
-                const progressPromises = coursesData.map(async (course) => {
-                    try {
-                        const progress = await getCourseProgress(course.id);
-                        return {
-                            courseId: course.id,
-                            hasProgress: progress.has_progress
-                        };
-                    } catch (err) {
-                        console.error(`Error fetching progress for course ${course.id}:`, err);
-                        return { courseId: course.id, hasProgress: false };
-                    }
-                });
-                
-                const progressResults = await Promise.all(progressPromises);
-                const progressMap = {};
-                progressResults.forEach(({ courseId, hasProgress }) => {
-                    progressMap[courseId] = hasProgress;
-                });
-                
-                setCourseProgress(progressMap);
+
+                // Fetch registration status for each course (only for students)
+                if (userData.role === 'student') {
+                    const registrationPromises = coursesData.map(async (course) => {
+                        try {
+                            const registration = await getCourseRegistration(course.id);
+                            return {
+                                courseId: course.id,
+                                enrolled: registration.enrolled
+                            };
+                        } catch (err) {
+                            console.error(`Error fetching registration for course ${course.id}:`, err);
+                            return { courseId: course.id, enrolled: false };
+                        }
+                    });
+
+                    const registrationResults = await Promise.all(registrationPromises);
+                    const registrationMap = {};
+                    registrationResults.forEach(({ courseId, enrolled }) => {
+                        registrationMap[courseId] = enrolled;
+                    });
+
+                    setCourseRegistrations(registrationMap);
+                }
             } catch (err) {
                 console.error('Failed to fetch data:', err);
                 localStorage.removeItem('token');
@@ -122,11 +125,31 @@ const Dashboard = () => {
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        navigate('/login');
+        navigate('/');
     };
 
     const toggleUserMenu = () => {
         setShowUserMenu(!showUserMenu);
+    };
+
+    const handleRegister = async (courseId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+            setRegisteringCourseId(courseId);
+            await registerForCourse(courseId);
+            // Update registration status
+            setCourseRegistrations(prev => ({
+                ...prev,
+                [courseId]: true
+            }));
+        } catch (err) {
+            console.error('Error registering for course:', err);
+            alert(err.response?.data?.detail || 'Failed to register for course. Please try again.');
+        } finally {
+            setRegisteringCourseId(null);
+        }
     };
 
     // Close menu when clicking outside
@@ -233,13 +256,13 @@ const Dashboard = () => {
                         <div className="courses-grid">
                             {courses.map((course) => {
                                 const thumbnail = courseThumbnails[course.id] || null;
-                                
+
                                 return (
                                     <div key={course.id} className="course-card">
                                         <div className="course-thumbnail-wrapper">
                                             {thumbnail ? (
-                                                <img 
-                                                    src={thumbnail} 
+                                                <img
+                                                    src={thumbnail}
                                                     alt={course.course_title}
                                                     className="course-thumbnail-img"
                                                     onError={(e) => {
@@ -248,7 +271,7 @@ const Dashboard = () => {
                                                     }}
                                                 />
                                             ) : null}
-                                            <div 
+                                            <div
                                                 className="course-icon"
                                                 style={{ display: thumbnail ? 'none' : 'flex' }}
                                             >
@@ -256,19 +279,29 @@ const Dashboard = () => {
                                             </div>
                                             <div className="play-overlay-dashboard">
                                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
-                                                    <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)"/>
-                                                    <polygon points="10,8 16,12 10,16" fill="white"/>
+                                                    <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)" />
+                                                    <polygon points="10,8 16,12 10,16" fill="white" />
                                                 </svg>
                                             </div>
                                         </div>
                                         <div className="course-card-header">
                                             <h3 className="course-title">{course.course_title}</h3>
                                         </div>
-                                        {user?.role !== 'admin' && (
+                                        {user?.role === 'student' && (
                                             <div className="course-card-footer">
-                                                <Link to={`/course/${course.id}`} className="btn-enroll">
-                                                    {courseProgress[course.id] ? 'Resume Course' : 'Start Course'}
-                                                </Link>
+                                                {courseRegistrations[course.id] ? (
+                                                    <Link to={`/course/${course.id}`} className="btn-enroll">
+                                                        Start Course
+                                                    </Link>
+                                                ) : (
+                                                    <button
+                                                        className="btn-enroll"
+                                                        onClick={(e) => handleRegister(course.id, e)}
+                                                        disabled={registeringCourseId === course.id}
+                                                    >
+                                                        {registeringCourseId === course.id ? 'Registering...' : 'Register'}
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

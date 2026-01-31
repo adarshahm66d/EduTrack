@@ -5,6 +5,7 @@ from models import User
 from schemas import UserSignup, UserLogin, UserResponse, Token
 from database import get_db
 from auth import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -75,39 +76,32 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
     }
 
 @router.get("/users/students", response_model=list[UserResponse])
-def get_all_students(db: Session = Depends(get_db)):
-    """Get all students"""
+def get_all_students(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all students (requires authentication)"""
     students = db.query(User).filter(User.role == 'student').all()
     return students
 
 @router.get("/users", response_model=list[UserResponse])
-def get_all_users(db: Session = Depends(get_db)):
-    """Get all users (admin only - should be protected in production)"""
+def get_all_users(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all users (admin only)"""
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
     users = db.query(User).all()
     return users
 
 @router.get("/users/me", response_model=UserResponse)
-def get_current_user(token: str, db: Session = Depends(get_db)):
+def get_current_user_endpoint(current_user: User = Depends(get_current_user)):
     """Get current authenticated user"""
-    from auth import verify_token
-    
-    payload = verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
-    
-    user_name = payload.get("sub")
-    user = db.query(User).filter(User.user_name == user_name).first()
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    return user
+    return current_user
 
 @router.get("/health")
 def health_check():

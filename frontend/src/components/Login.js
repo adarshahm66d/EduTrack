@@ -29,11 +29,11 @@ const Login = ({ onLogin }) => {
             const response = await login(formData);
             localStorage.setItem('token', response.access_token);
             localStorage.setItem('user', JSON.stringify(response.user));
-            // Trigger token update in App.js
+            // Trigger token update in App.js immediately
             if (onLogin) onLogin();
             // Dispatch custom event for App.js to listen
             window.dispatchEvent(new Event('tokenUpdated'));
-            // Navigate to dashboard
+            // Navigate to dashboard immediately after successful login
             navigate('/dashboard', { replace: true });
         } catch (err) {
             console.error('Login error:', err);

@@ -148,7 +148,7 @@ const Landing = () => {
                                     const thumbnail = courseThumbnails[course.id] || null;
                                     
                                     return (
-                                        <div key={course.id} className="course-card">
+                                        <div key={course.id} className={`course-card ${isExpanded ? 'expanded' : ''}`}>
                                             <div className="course-card-header">
                                                 {thumbnail ? (
                                                     <img 
@@ -171,15 +171,20 @@ const Landing = () => {
                                             <div className="course-card-body">
                                                 <h3 className="course-title">{course.course_title}</h3>
                                                 {isExpanded && (
-                                                    <div className="course-description">
+                                                    <div className="course-description" role="region" aria-label="Course description">
                                                         <p>{description}</p>
                                                     </div>
                                                 )}
                                                 <button
                                                     className="btn-show-details"
-                                                    onClick={() => toggleCourseDetails(course.id)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleCourseDetails(course.id);
+                                                    }}
+                                                    aria-expanded={isExpanded}
+                                                    aria-label={isExpanded ? 'Hide course details' : 'Show course details'}
                                                 >
-                                                    {isExpanded ? 'Hide Details' : 'Show Details'}
+                                                    <span>{isExpanded ? 'Hide Details' : 'Show Details'}</span>
                                                     <span className="details-arrow">
                                                         {isExpanded ? '▲' : '▼'}
                                                     </span>
@@ -187,8 +192,8 @@ const Landing = () => {
                                             </div>
                                             <div className="course-card-footer">
                                                 {token ? (
-                                                    <Link to={`/dashboard?course=${course.id}`} className="btn-enroll">
-                                                        Enroll Now
+                                                    <Link to={`/course/${course.id}`} className="btn-enroll">
+                                                        View Course
                                                     </Link>
                                                 ) : (
                                                     <Link to="/signup" className="btn-enroll">

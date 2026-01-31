@@ -43,10 +43,8 @@ export const login = async (credentials) => {
     return response.data;
 };
 
-export const getCurrentUser = async (token) => {
-    const response = await api.get('/auth/users/me', {
-        params: { token },
-    });
+export const getCurrentUser = async () => {
+    const response = await api.get('/auth/users/me');
     return response.data;
 };
 
@@ -71,9 +69,19 @@ export const deleteCourse = async (courseId) => {
     return response.data;
 };
 
+export const getCourseRegistration = async (courseId) => {
+    const response = await api.get(`/courses/${courseId}/registration`);
+    return response.data;
+};
+
+export const registerForCourse = async (courseId) => {
+    const response = await api.post(`/courses/${courseId}/register`);
+    return response.data;
+};
+
 // Video Service API
 export const getCourseVideos = async (courseId) => {
-    const response = await api.get(`/videos/course/${courseId}`);
+    const response = await api.get(`/courses/${courseId}/videos`);
     return response.data;
 };
 
@@ -81,21 +89,6 @@ export const addYouTubePlaylist = async (playlistUrl) => {
     const response = await api.post('/videos/youtube-playlist', {
         playlist_url: playlistUrl,
     });
-    return response.data;
-};
-
-// Progress Tracking API
-export const updateVideoProgress = async (courseId, videoId, watchTime) => {
-    const response = await api.post('/videos/progress', {
-        course_id: courseId,
-        video_id: videoId,
-        watch_time: watchTime,
-    });
-    return response.data;
-};
-
-export const getCourseProgress = async (courseId) => {
-    const response = await api.get(`/videos/course/${courseId}/progress`);
     return response.data;
 };
 

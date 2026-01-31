@@ -28,12 +28,11 @@ class CourseVideo(Base):
     title = Column(String(255), nullable=False)
     video_link = Column(Text)
 
-class VideoProgress(Base):
-    __tablename__ = "video_progress"
+class CourseStatus(Base):
+    __tablename__ = "course_status"
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=False, index=True)
-    course_id = Column(Integer, nullable=False, index=True)
-    video_id = Column(Integer, nullable=False, index=True)
-    watch_time = Column(Integer, default=0)  # Watch time in seconds
-    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    course_id = Column(Integer, nullable=False, index=True)  # Changed from course_ID to course_id
+    enrolled = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

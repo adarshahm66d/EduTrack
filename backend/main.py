@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
+from models import User, Course, CourseVideo, CourseStatus  # Import models to ensure tables are created
 from auth_service import router as auth_router
 from course_service import router as course_router
 from video_service import router as video_router

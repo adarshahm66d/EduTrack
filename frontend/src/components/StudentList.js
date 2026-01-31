@@ -22,7 +22,7 @@ const StudentList = () => {
         const fetchData = async () => {
             try {
                 const [userData, studentsData] = await Promise.all([
-                    getCurrentUser(token),
+                    getCurrentUser(),
                     getAllStudents()
                 ]);
                 setUser(userData);

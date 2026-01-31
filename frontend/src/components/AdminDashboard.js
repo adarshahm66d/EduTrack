@@ -25,7 +25,7 @@ const AdminDashboard = () => {
         const fetchData = async () => {
             try {
                 const [userData, coursesData] = await Promise.all([
-                    getCurrentUser(token),
+                    getCurrentUser(),
                     getCourses()
                 ]);
                 
