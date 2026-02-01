@@ -424,20 +424,34 @@
     margin-bottom: 0.5rem;
 }
 
-.playlist-link {
+.btn-playlist {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: transparent;
+    border: 1.5px solid #667eea;
     color: #667eea;
     text-decoration: none;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
     transition: all 0.3s;
+    width: 100%;
+    justify-content: center;
 }
 
-.playlist-link:hover {
-    color: #764ba2;
-    text-decoration: underline;
+.btn-playlist:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-playlist:active {
+    transform: translateY(0);
 }
 
 .course-card-footer {
