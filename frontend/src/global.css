@@ -366,6 +366,7 @@ code {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 1.5rem;
     width: 100%;
+    align-items: start;
 }
 
 .course-card {
@@ -406,13 +407,13 @@ code {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     text-align: center;
-    min-height: 120px;
-    max-height: 140px;
+    height: 140px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .course-thumbnail {
@@ -436,13 +437,15 @@ code {
     font-weight: 700;
     margin: 0 0 0.5rem 0;
     line-height: 1.4;
-    word-wrap: break-word;
     color: #2d3748;
     text-align: center;
-    min-height: 2.8em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    height: 3.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
 }
 
 .course-card-body {
@@ -452,10 +455,12 @@ code {
     flex-direction: column;
     gap: 1rem;
     min-height: 60px;
+    justify-content: space-between;
 }
 
 .course-card-body .course-title {
     margin-bottom: 0.5rem;
+    flex-shrink: 0;
 }
 
 .course-description {
@@ -510,7 +515,8 @@ code {
     justify-content: center;
     gap: 0.5rem;
     width: 100%;
-    margin-top: 0.5rem;
+    margin-top: auto;
+    flex-shrink: 0;
 }
 
 .btn-show-details:hover {
@@ -553,6 +559,8 @@ code {
     padding: 1rem 1.25rem;
     border-top: 1px solid #e9ecef;
     width: 100%;
+    flex-shrink: 0;
+    margin-top: auto;
 }
 
 .btn-enroll {
@@ -1273,30 +1281,34 @@ code {
     flex-shrink: 0;
 }
 
-.copy-link-btn {
+.course-details-btn {
     background: transparent;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
+    border: 1.5px solid #667eea;
+    border-radius: 8px;
+    padding: 0.625rem 1rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    color: #666;
-    transition: all 0.3s;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-.copy-link-btn:hover {
-    background-color: #f0f0f0;
-    border-color: #667eea;
     color: #667eea;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    width: 100%;
 }
 
-.copy-link-btn:active {
-    transform: scale(0.95);
+.course-details-btn:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.course-details-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
 }
 
 /* Course details styles */

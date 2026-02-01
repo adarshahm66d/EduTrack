@@ -236,30 +236,22 @@ const CourseCatalog = () => {
                                 </div>
                                 <div className="course-card-content">
                                     <h3 className="course-title">{course.course_title}</h3>
-                                    {course.link && (
-                                        <div className="course-link-container">
-                                            <button
-                                                className="copy-link-btn"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigator.clipboard.writeText(course.link);
-                                                    const btn = e.target;
-                                                    const originalText = btn.textContent;
-                                                    btn.textContent = 'Copied!';
-                                                    setTimeout(() => {
-                                                        btn.textContent = originalText;
-                                                    }, 2000);
-                                                }}
-                                                title="Copy playlist link"
-                                            >
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                                </svg>
-                                                Copy Link
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="course-link-container">
+                                        <button
+                                            className="course-details-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCourseClick(course.id);
+                                            }}
+                                            title="View course details"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                            Course Details
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );
