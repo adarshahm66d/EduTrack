@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getAllStudents, getCurrentUser } from '../api';
-import './StudentList.css';
 
 const StudentList = () => {
     const [students, setStudents] = useState([]);

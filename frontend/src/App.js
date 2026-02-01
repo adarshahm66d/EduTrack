@@ -8,7 +8,6 @@ import AdminDashboard from './components/AdminDashboard';
 import StudentList from './components/StudentList';
 import CourseDetail from './components/CourseDetail';
 import CourseCatalog from './components/CourseCatalog';
-import './App.css';
 
 function App() {
     const [token, setToken] = useState(localStorage.getItem('token'));

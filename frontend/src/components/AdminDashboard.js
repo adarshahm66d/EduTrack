@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getCurrentUser, getCourses, getCourseVideos, addYouTubePlaylist, deleteCourse } from '../api';
-import './AdminDashboard.css';
 
 const AdminDashboard = () => {
     const [user, setUser] = useState(null);
@@ -327,7 +326,7 @@ const AdminDashboard = () => {
                                         </div>
                                         <h3 className="course-title">{course.course_title}</h3>
                                         <div className="course-card-body">
-                                            {course.link && (
+                                            {course.link ? (
                                                 <div className="course-link-info">
                                                     <button 
                                                         onClick={() => window.open(course.link, '_blank', 'noopener,noreferrer')}
@@ -338,6 +337,12 @@ const AdminDashboard = () => {
                                                             <polyline points="15 3 21 3 21 9"></polyline>
                                                             <line x1="10" y1="14" x2="21" y2="3"></line>
                                                         </svg>
+                                                        View Playlist
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="course-link-info" style={{ visibility: 'hidden', height: '48px' }}>
+                                                    <button className="btn-playlist" style={{ pointerEvents: 'none' }}>
                                                         View Playlist
                                                     </button>
                                                 </div>

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import './VideoPlayer.css';
 
 // Extract YouTube video ID from various URL formats
 const extractVideoId = (videoIdOrUrl) => {

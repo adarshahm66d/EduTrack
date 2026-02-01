@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getCurrentUser, getCourses, getCourseVideos, getCourseRegistration, registerForCourse } from '../api';
-import './Dashboard.css';
 
 const Dashboard = () => {
     const [user, setUser] = useState(null);

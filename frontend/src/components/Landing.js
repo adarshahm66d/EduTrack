@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getCourses, getCourseVideos } from '../api';
-import './Landing.css';
 
 const Landing = () => {
     const [courses, setCourses] = useState([]);

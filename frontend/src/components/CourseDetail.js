@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getCourse, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse } from '../api';
 import VideoPlayer from './VideoPlayer';
-import './CourseDetail.css';
 
 const CourseDetail = () => {
     const { courseId } = useParams();
@@ -126,7 +125,7 @@ const CourseDetail = () => {
     };
 
     const handleVideoEnd = () => {
-        // Auto-play next video when current video ends
+        //  For Auto-playing next video when current video ends
         if (selectedVideoIndex < videos.length - 1) {
             handleNextVideo();
         }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCourses, addYouTubePlaylist, getCourseVideos, getCurrentUser } from '../api';
-import './CourseCatalog.css';
 
 const CourseCatalog = () => {
     const [courses, setCourses] = useState([]);
