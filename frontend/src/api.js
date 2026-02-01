@@ -86,8 +86,11 @@ export const getCourseVideos = async (courseId) => {
 };
 
 export const addYouTubePlaylist = async (playlistUrl) => {
+    // Use a longer timeout for playlist extraction (2 minutes)
     const response = await api.post('/videos/youtube-playlist', {
         playlist_url: playlistUrl,
+    }, {
+        timeout: 120000, // 2 minutes timeout for playlist extraction
     });
     return response.data;
 };

@@ -135,14 +135,47 @@ const AdminDashboard = () => {
         try {
             setAdding(true);
             setError('');
-            await addYouTubePlaylist(playlistUrl);
+            const newCourse = await addYouTubePlaylist(playlistUrl);
             setPlaylistUrl('');
             setShowAddForm(false);
-            // Refresh the course list
+            
+            // Add the new course directly to the state immediately
+            setCourses(prevCourses => {
+                // Check if course already exists (avoid duplicates)
+                const exists = prevCourses.some(c => c.id === newCourse.id);
+                if (exists) {
+                    return prevCourses;
+                }
+                return [newCourse, ...prevCourses];
+            });
+
+            // Fetch thumbnail for the new course
+            try {
+                const videos = await getCourseVideos(newCourse.id);
+                if (videos && videos.length > 0 && videos[0].video_link) {
+                    const videoId = extractVideoId(videos[0].video_link);
+                    if (videoId) {
+                        setCourseThumbnails(prev => ({
+                            ...prev,
+                            [newCourse.id]: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                        }));
+                    }
+                }
+            } catch (thumbnailErr) {
+                console.error('Error fetching thumbnail for new course:', thumbnailErr);
+            }
+
+            // Also refresh the course list as a backup to ensure consistency
             await fetchCourses();
         } catch (err) {
             console.error('Error adding playlist:', err);
-            setError(err.response?.data?.detail || 'Failed to add playlist. Please check the URL and try again.');
+            const errorMessage = err.response?.data?.detail || err.message || 'Failed to add playlist. Please check the URL and try again.';
+            setError(errorMessage);
+            console.error('Full error details:', {
+                message: err.message,
+                response: err.response?.data,
+                status: err.response?.status
+            });
         } finally {
             setAdding(false);
         }
@@ -277,7 +310,7 @@ const AdminDashboard = () => {
                                         </small>
                                     </div>
                                     <button type="submit" className="submit-btn" disabled={adding}>
-                                        {adding ? 'Adding Course...' : 'Add Course'}
+                                        {adding ? 'Processing Playlist... This may take a minute' : 'Add Course'}
                                     </button>
                                 </form>
                             </div>
