@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getCurrentUser, getCourses, addYouTubePlaylist, deleteCourse } from '../api';
+import { getCurrentUser, getCourses, getCourseVideos, addYouTubePlaylist, deleteCourse } from '../api';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
     const [user, setUser] = useState(null);
     const [courses, setCourses] = useState([]);
+    const [courseThumbnails, setCourseThumbnails] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
@@ -14,6 +15,12 @@ const AdminDashboard = () => {
     const [deletingCourseId, setDeletingCourseId] = useState(null);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const navigate = useNavigate();
+
+    const extractVideoId = (url) => {
+        if (!url) return null;
+        const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+        return match ? match[1] : null;
+    };
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -37,6 +44,35 @@ const AdminDashboard = () => {
                 
                 setUser(userData);
                 setCourses(coursesData);
+
+                // Fetch thumbnails for each course in parallel
+                const thumbnailPromises = coursesData.map(async (course) => {
+                    try {
+                        const videos = await getCourseVideos(course.id);
+                        if (videos && videos.length > 0 && videos[0].video_link) {
+                            const videoId = extractVideoId(videos[0].video_link);
+                            if (videoId) {
+                                return {
+                                    courseId: course.id,
+                                    thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                                };
+                            }
+                        }
+                    } catch (err) {
+                        console.error(`Error fetching videos for course ${course.id}:`, err);
+                    }
+                    return { courseId: course.id, thumbnail: null };
+                });
+
+                const thumbnailResults = await Promise.all(thumbnailPromises);
+                const thumbnailMap = {};
+                thumbnailResults.forEach(({ courseId, thumbnail }) => {
+                    if (thumbnail) {
+                        thumbnailMap[courseId] = thumbnail;
+                    }
+                });
+
+                setCourseThumbnails(thumbnailMap);
             } catch (err) {
                 console.error('Failed to fetch data:', err);
                 localStorage.removeItem('token');
@@ -55,6 +91,35 @@ const AdminDashboard = () => {
             const data = await getCourses();
             setCourses(data);
             setError('');
+
+            // Fetch thumbnails for each course in parallel
+            const thumbnailPromises = data.map(async (course) => {
+                try {
+                    const videos = await getCourseVideos(course.id);
+                    if (videos && videos.length > 0 && videos[0].video_link) {
+                        const videoId = extractVideoId(videos[0].video_link);
+                        if (videoId) {
+                            return {
+                                courseId: course.id,
+                                thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                            };
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Error fetching videos for course ${course.id}:`, err);
+                }
+                return { courseId: course.id, thumbnail: null };
+            });
+
+            const thumbnailResults = await Promise.all(thumbnailPromises);
+            const thumbnailMap = {};
+            thumbnailResults.forEach(({ courseId, thumbnail }) => {
+                if (thumbnail) {
+                    thumbnailMap[courseId] = thumbnail;
+                }
+            });
+
+            setCourseThumbnails(thumbnailMap);
         } catch (err) {
             console.error('Error fetching courses:', err);
             setError('Failed to load courses. Please try again.');
@@ -237,12 +302,30 @@ const AdminDashboard = () => {
                             </div>
                         ) : (
                             <div className="admin-courses-grid">
-                                {courses.map((course) => (
+                                {courses.map((course) => {
+                                    const thumbnail = courseThumbnails[course.id] || null;
+                                    return (
                                     <div key={course.id} className="admin-course-card">
                                         <div className="course-card-header">
-                                            <div className="course-icon">📚</div>
-                                            <h3 className="course-title">{course.course_title}</h3>
+                                            {thumbnail ? (
+                                                <img 
+                                                    src={thumbnail} 
+                                                    alt={course.course_title}
+                                                    className="course-thumbnail"
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextSibling.style.display = 'flex';
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <div 
+                                                className="course-icon"
+                                                style={{ display: thumbnail ? 'none' : 'flex' }}
+                                            >
+                                                📚
+                                            </div>
                                         </div>
+                                        <h3 className="course-title">{course.course_title}</h3>
                                         <div className="course-card-body">
                                             {course.link && (
                                                 <div className="course-link-info">
@@ -290,7 +373,8 @@ const AdminDashboard = () => {
                                             </div>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </section>
