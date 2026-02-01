@@ -374,7 +374,7 @@ const AdminDashboard = () => {
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <div className="course-link-info" style={{ visibility: 'hidden', height: '48px' }}>
+                                                <div className="course-link-info" style={{ visibility: 'hidden' }}>
                                                     <button className="btn-playlist" style={{ pointerEvents: 'none' }}>
                                                         View Playlist
                                                     </button>
