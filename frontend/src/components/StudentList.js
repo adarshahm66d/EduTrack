@@ -72,7 +72,10 @@ const StudentList = () => {
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        navigate('/login');
+        // Dispatch event to update App.js token state
+        window.dispatchEvent(new Event('tokenUpdated'));
+        // Navigate to landing page
+        navigate('/', { replace: true });
     };
 
     const toggleUserMenu = () => {

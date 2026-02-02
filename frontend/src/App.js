@@ -10,21 +10,27 @@ import CourseDetail from './components/CourseDetail';
 import CourseCatalog from './components/CourseCatalog';
 
 function App() {
-    const [token, setToken] = useState(localStorage.getItem('token'));
+    const [token, setToken] = useState(() => localStorage.getItem('token'));
 
     useEffect(() => {
-        // Listen for storage changes (when token is set in another component)
+        // Listen for storage changes (when token is set/removed in another component)
         const handleStorageChange = () => {
-            setToken(localStorage.getItem('token'));
+            const newToken = localStorage.getItem('token');
+            setToken(newToken);
         };
 
-        // Listen for custom event when login happens
+        // Listen for custom event when login/logout happens
+        const handleTokenUpdate = () => {
+            const newToken = localStorage.getItem('token');
+            setToken(newToken);
+        };
+
         window.addEventListener('storage', handleStorageChange);
-        window.addEventListener('tokenUpdated', handleStorageChange);
+        window.addEventListener('tokenUpdated', handleTokenUpdate);
 
         return () => {
             window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('tokenUpdated', handleStorageChange);
+            window.removeEventListener('tokenUpdated', handleTokenUpdate);
         };
     }, []);
 

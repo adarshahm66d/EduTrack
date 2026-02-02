@@ -12,6 +12,7 @@ const CourseCatalog = () => {
     const [playlistUrl, setPlaylistUrl] = useState('');
     const [adding, setAdding] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [expandedCourses, setExpandedCourses] = useState(new Set());
     const navigate = useNavigate();
 
     const extractVideoId = (url) => {
@@ -160,6 +161,32 @@ const CourseCatalog = () => {
         navigate(`/course/${courseId}`);
     };
 
+    const toggleCourseDetails = (courseId) => {
+        setExpandedCourses((prev) => {
+            const newSet = new Set(prev);
+            if (newSet.has(courseId)) {
+                newSet.delete(courseId);
+            } else {
+                newSet.add(courseId);
+            }
+            return newSet;
+        });
+    };
+
+    const getCourseDescription = (courseTitle) => {
+        // Generate a default description based on course title
+        const descriptions = {
+            'JavaScript': 'Learn JavaScript from basics to advanced concepts. Master modern ES6+ features, DOM manipulation, async programming, and build real-world projects.',
+            'C++': 'Master C++ programming with comprehensive tutorials covering object-oriented programming, data structures, algorithms, and advanced C++ features.',
+            'HTML': 'Start your web development journey with HTML. Learn to create structured, semantic web pages and understand the foundation of modern web development.',
+            'C Language': 'Learn the fundamentals of C programming language. Perfect for beginners to understand programming concepts, memory management, and system programming.',
+            'Java': 'Comprehensive Java programming course covering OOP principles, collections framework, multithreading, and enterprise Java development.',
+            'IT Security': 'Learn cybersecurity fundamentals, ethical hacking, network security, and best practices to protect systems and data from threats.'
+        };
+        
+        return descriptions[courseTitle] || `Explore ${courseTitle} through comprehensive video tutorials. This course covers essential concepts and practical applications to help you master the subject.`;
+    };
+
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
     };
@@ -258,13 +285,14 @@ const CourseCatalog = () => {
                 <div className="courses-grid">
                     {filteredCourses.map((course) => {
                         const thumbnail = courseThumbnails[course.id] || null;
+                        const isExpanded = expandedCourses.has(course.id);
+                        const description = getCourseDescription(course.course_title);
                         return (
                             <div
                                 key={course.id}
-                                className="course-card"
-                                onClick={() => handleCourseClick(course.id)}
+                                className={`course-card ${isExpanded ? 'expanded' : ''}`}
                             >
-                                <div className="course-thumbnail-container">
+                                <div className="course-card-header">
                                     {thumbnail ? (
                                         <img 
                                             src={thumbnail} 
@@ -280,37 +308,41 @@ const CourseCatalog = () => {
                                         className="course-icon"
                                         style={{ display: thumbnail ? 'none' : 'flex' }}
                                     >
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                            <line x1="9" y1="9" x2="15" y2="9"></line>
-                                            <line x1="9" y1="15" x2="15" y2="15"></line>
-                                        </svg>
-                                    </div>
-                                    <div className="play-overlay">
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
-                                            <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)"/>
-                                            <polygon points="10,8 16,12 10,16" fill="white"/>
-                                        </svg>
+                                        📚
                                     </div>
                                 </div>
-                                <div className="course-card-content">
+                                <div className="course-card-body">
                                     <h3 className="course-title">{course.course_title}</h3>
-                                    <div className="course-link-container">
-                                        <button
-                                            className="course-details-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleCourseClick(course.id);
-                                            }}
-                                            title="View course details"
-                                        >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                            </svg>
-                                            Course Details
-                                        </button>
-                                    </div>
+                                    {isExpanded && (
+                                        <div className="course-description" role="region" aria-label="Course description">
+                                            <p>{description}</p>
+                                        </div>
+                                    )}
+                                    <button
+                                        className="btn-show-details"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleCourseDetails(course.id);
+                                        }}
+                                        aria-expanded={isExpanded}
+                                        aria-label={isExpanded ? 'Hide course details' : 'Show course details'}
+                                    >
+                                        <span>{isExpanded ? 'Hide Details' : 'Show Details'}</span>
+                                        <span className="details-arrow">
+                                            {isExpanded ? '▲' : '▼'}
+                                        </span>
+                                    </button>
+                                </div>
+                                <div className="course-card-footer">
+                                    <button
+                                        className="btn-enroll"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCourseClick(course.id);
+                                        }}
+                                    >
+                                        Start Course
+                                    </button>
                                 </div>
                             </div>
                         );

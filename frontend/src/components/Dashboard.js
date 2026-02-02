@@ -125,7 +125,10 @@ const Dashboard = () => {
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        navigate('/');
+        // Dispatch event to update App.js token state
+        window.dispatchEvent(new Event('tokenUpdated'));
+        // Navigate to landing page
+        navigate('/', { replace: true });
     };
 
     const toggleUserMenu = () => {
@@ -239,7 +242,9 @@ const Dashboard = () => {
             <main className="dashboard-main">
                 <div className="dashboard-header">
                     <h1>Welcome back, {user?.name}!</h1>
-                    <p className="dashboard-subtitle">Continue your learning journey</p>
+                    {user?.role === 'student' && (
+                        <p className="dashboard-subtitle">Continue your learning journey</p>
+                    )}
                 </div>
 
                 <section className="courses-section">

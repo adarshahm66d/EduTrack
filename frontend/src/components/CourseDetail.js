@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getCourse, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse } from '../api';
-import VideoPlayer from './VideoPlayer';
+import { getCourse, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse, getVideoProgress, trackProgress } from '../api';
 
 const CourseDetail = () => {
     const { courseId } = useParams();
@@ -16,6 +15,7 @@ const CourseDetail = () => {
     const [isRegistered, setIsRegistered] = useState(false);
     const [checkingRegistration, setCheckingRegistration] = useState(true);
     const [registering, setRegistering] = useState(false);
+    const [videoProgress, setVideoProgress] = useState({}); // { videoId: { watchTime: seconds, percentage: number } }
 
     useEffect(() => {
         const fetchCourseData = async () => {
@@ -50,6 +50,36 @@ const CourseDetail = () => {
                 if (videosData.length > 0) {
                     setSelectedVideo(videosData[0]);
                     setSelectedVideoIndex(0);
+                }
+
+                // Fetch progress for all videos
+                if (videosData.length > 0 && userData.role === 'student') {
+                    const progressPromises = videosData.map(async (video) => {
+                        try {
+                            const progressRecords = await getVideoProgress(video.id);
+                            if (progressRecords && progressRecords.length > 0) {
+                                // Sum all watch_time from all records
+                                let totalSeconds = 0;
+                                progressRecords.forEach(record => {
+                                    if (record.watch_time) {
+                                        const [hours, minutes, seconds] = record.watch_time.split(':').map(Number);
+                                        totalSeconds += hours * 3600 + minutes * 60 + seconds;
+                                    }
+                                });
+                                return { videoId: video.id, watchTime: totalSeconds };
+                            }
+                        } catch (err) {
+                            console.error(`Error fetching progress for video ${video.id}:`, err);
+                        }
+                        return { videoId: video.id, watchTime: 0 };
+                    });
+
+                    const progressResults = await Promise.all(progressPromises);
+                    const progressMap = {};
+                    progressResults.forEach(({ videoId, watchTime }) => {
+                        progressMap[videoId] = { watchTime };
+                    });
+                    setVideoProgress(progressMap);
                 }
             } catch (err) {
                 setError('Failed to load course. Please try again.');
@@ -103,6 +133,17 @@ const CourseDetail = () => {
         return null;
     };
 
+    const formatTime = (seconds) => {
+        if (!seconds || seconds === 0) return '';
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    };
+
     const handleVideoSelect = (video, index) => {
         setSelectedVideo(video);
         setSelectedVideoIndex(index);
@@ -125,11 +166,19 @@ const CourseDetail = () => {
     };
 
     const handleVideoEnd = () => {
-        //  For Auto-playing next video when current video ends
+        // Auto-play next video when current video ends
         if (selectedVideoIndex < videos.length - 1) {
             handleNextVideo();
         }
     };
+
+    // Track video progress when video ends
+    useEffect(() => {
+        if (selectedVideo) {
+            // This will be handled by iframe events if needed
+            // For now, we rely on the backend tracking
+        }
+    }, [selectedVideo]);
 
     if (loading) {
         return (
@@ -199,118 +248,123 @@ const CourseDetail = () => {
             </nav>
 
             <div className="course-content">
-                <div className="course-header">
-                    <h1 className="course-title">{course.course_title}</h1>
-                    {course.link && (
-                        <p className="course-playlist-info">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <line x1="9" y1="9" x2="15" y2="9"></line>
-                                <line x1="9" y1="15" x2="15" y2="15"></line>
-                            </svg>
-                            YouTube Playlist Course
-                        </p>
-                    )}
-                </div>
+                <div className="course-page">
+                    {selectedVideo ? (
+                        <>
+                            <div className="video-wrapper">
+                                <iframe
+                                    src={`https://www.youtube.com/embed/${extractVideoId(selectedVideo.video_link)}?enablejsapi=1&origin=${window.location.origin}`}
+                                    title={selectedVideo.title}
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="video-iframe"
+                                ></iframe>
+                            </div>
 
-                <div className="course-main">
-                    <div className="video-section">
-                        {selectedVideo && (
-                            <div className="video-player-container">
-                                <VideoPlayer
-                                    videoId={extractVideoId(selectedVideo.video_link)}
-                                    videoUrl={selectedVideo.video_link}
-                                    onVideoEnd={handleVideoEnd}
-                                    videoDbId={selectedVideo.id}
-                                />
-                                <div className="video-info">
-                                    <div className="video-info-header">
-                                        <h2 className="current-video-title">{selectedVideo.title}</h2>
-                                        <div className="video-navigation">
-                                            <button
-                                                className="nav-video-btn"
-                                                onClick={handlePreviousVideo}
-                                                disabled={selectedVideoIndex === 0}
-                                                title="Previous video"
-                                            >
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <polyline points="15 18 9 12 15 6"></polyline>
-                                                </svg>
-                                                Previous
-                                            </button>
-                                            <span className="video-counter">
-                                                {selectedVideoIndex + 1} / {videos.length}
-                                            </span>
-                                            <button
-                                                className="nav-video-btn"
-                                                onClick={handleNextVideo}
-                                                disabled={selectedVideoIndex === videos.length - 1}
-                                                title="Next video"
-                                            >
-                                                Next
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
+                            <div className="video-info">
+                                <h1 className="video-title">{selectedVideo.title}</h1>
+                                <p className="video-description">
+                                    {course.course_title} - Video {selectedVideoIndex + 1} of {videos.length}
+                                </p>
+                                <div className="video-navigation">
+                                    <button
+                                        className="nav-video-btn"
+                                        onClick={handlePreviousVideo}
+                                        disabled={selectedVideoIndex === 0}
+                                        title="Previous video"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <polyline points="15 18 9 12 15 6"></polyline>
+                                        </svg>
+                                        Previous
+                                    </button>
+                                    <span className="video-counter">
+                                        {selectedVideoIndex + 1} / {videos.length}
+                                    </span>
+                                    <button
+                                        className="nav-video-btn"
+                                        onClick={handleNextVideo}
+                                        disabled={selectedVideoIndex === videos.length - 1}
+                                        title="Next video"
+                                    >
+                                        Next
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <polyline points="9 18 15 12 9 6"></polyline>
+                                        </svg>
+                                    </button>
                                 </div>
                             </div>
-                        )}
-                        {!selectedVideo && videos.length === 0 && (
-                            <div className="no-videos">
-                                <p>No videos available for this course.</p>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="video-list-section">
-                        <div className="video-list-header">
-                            <h3 className="video-list-title">Course Videos ({videos.length})</h3>
-                            {videos.length > 5 && (
-                                <div className="playlist-search">
-                                    <input
-                                        type="text"
-                                        placeholder="Search videos..."
-                                        value={playlistSearch}
-                                        onChange={(e) => setPlaylistSearch(e.target.value)}
-                                        className="playlist-search-input"
-                                    />
-                                </div>
-                            )}
+                        </>
+                    ) : videos.length === 0 ? (
+                        <div className="no-videos">
+                            <p>No videos available for this course.</p>
                         </div>
-                        <div className="video-list">
+                    ) : null}
+
+                    <div className="playlist">
+                        <h3 className="playlist-title">
+                            Up Next: {course?.course_title || 'Course Videos'} ({videos.length})
+                        </h3>
+                        <div className="horizontal-scroll">
                             {videos
-                                .filter((video) =>
-                                    playlistSearch === '' ||
-                                    video.title.toLowerCase().includes(playlistSearch.toLowerCase())
-                                )
+                                .filter((video) => {
+                                    const matchesSearch = playlistSearch === '' || 
+                                        video.title.toLowerCase().includes(playlistSearch.toLowerCase());
+                                    return matchesSearch;
+                                })
                                 .map((video, index) => {
                                     const originalIndex = videos.indexOf(video);
                                     const videoId = extractVideoId(video.video_link);
                                     const isSelected = selectedVideo && selectedVideo.id === video.id;
+                                    const progress = videoProgress[video.id] || { watchTime: 0 };
+                                    const progressPercentage = progress.watchTime > 0 ? Math.min((progress.watchTime / 600) * 100, 100) : 0;
+                                    
                                     return (
                                         <div
                                             key={video.id}
                                             className={`video-item ${isSelected ? 'active' : ''}`}
                                             onClick={() => handleVideoSelect(video, originalIndex)}
                                         >
-                                            <div className="video-item-number">{originalIndex + 1}</div>
-                                            <div className="video-item-thumbnail">
-                                                {videoId ? (
-                                                    <img
-                                                        src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
-                                                        alt={video.title}
-                                                        onError={(e) => {
-                                                            e.target.src = 'https://via.placeholder.com/160x90?text=Video';
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <div className="thumbnail-placeholder">📹</div>
-                                                )}
+                                            <div className="video-item-thumbnail-wrapper">
+                                                <div className="video-item-thumbnail">
+                                                    {videoId ? (
+                                                        <img
+                                                            src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                                                            alt={video.title}
+                                                            onError={(e) => {
+                                                                e.target.src = 'https://via.placeholder.com/160x90?text=Video';
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div className="thumbnail-placeholder">📹</div>
+                                                    )}
+                                                    {progress.watchTime > 0 && (
+                                                        <div className="video-progress-bar">
+                                                            <div 
+                                                                className="video-progress-fill" 
+                                                                style={{ width: `${progressPercentage}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    )}
+                                                    {isSelected && (
+                                                        <div className="video-playing-indicator">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                                                                <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)"/>
+                                                                <polygon points="10,8 16,12 10,16" fill="white"/>
+                                                            </svg>
+                                                        </div>
+                                                    )}
+                                                    <div className="video-item-number">{originalIndex + 1}</div>
+                                                </div>
                                             </div>
                                             <div className="video-item-info">
                                                 <h4 className="video-item-title">{video.title}</h4>
+                                                {progress.watchTime > 0 && (
+                                                    <div className="video-item-progress-text">
+                                                        {formatTime(progress.watchTime)} watched
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
