@@ -11,6 +11,7 @@ const Dashboard = () => {
     const [coursesLoading, setCoursesLoading] = useState(true);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [registeringCourseId, setRegisteringCourseId] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -151,6 +152,15 @@ const Dashboard = () => {
         }
     };
 
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    // Filter courses based on search term
+    const filteredCourses = courses.filter(course =>
+        course.course_title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -244,6 +254,31 @@ const Dashboard = () => {
                         <div className="loading-message">Loading courses...</div>
                     )}
 
+                    {!coursesLoading && courses.length > 0 && (
+                        <div className="search-container">
+                            <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="Search courses..."
+                                value={searchTerm}
+                                onChange={handleSearchChange}
+                            />
+                            {searchTerm && (
+                                <button
+                                    className="clear-search-btn"
+                                    onClick={() => setSearchTerm('')}
+                                    title="Clear search"
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     {!coursesLoading && courses.length === 0 && (
                         <div className="empty-message">
                             <p>No courses available at the moment.</p>
@@ -251,9 +286,16 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {!coursesLoading && courses.length > 0 && (
+                    {!coursesLoading && courses.length > 0 && filteredCourses.length === 0 && (
+                        <div className="empty-message">
+                            <p>No courses found matching "{searchTerm}".</p>
+                            <p>Try a different search term.</p>
+                        </div>
+                    )}
+
+                    {!coursesLoading && filteredCourses.length > 0 && (
                         <div className="courses-grid">
-                            {courses.map((course) => {
+                            {filteredCourses.map((course) => {
                                 const thumbnail = courseThumbnails[course.id] || null;
 
                                 return (

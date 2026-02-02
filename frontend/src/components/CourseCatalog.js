@@ -11,6 +11,7 @@ const CourseCatalog = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [playlistUrl, setPlaylistUrl] = useState('');
     const [adding, setAdding] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const navigate = useNavigate();
 
     const extractVideoId = (url) => {
@@ -159,6 +160,15 @@ const CourseCatalog = () => {
         navigate(`/course/${courseId}`);
     };
 
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    // Filter courses based on search term
+    const filteredCourses = courses.filter(course =>
+        course.course_title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
 
     if (loading) {
         return (
@@ -209,14 +219,44 @@ const CourseCatalog = () => {
 
             {error && <div className="error-message">{error}</div>}
 
+            {courses.length > 0 && (
+                <div className="search-container">
+                    <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input
+                        type="text"
+                        className="search-input"
+                        placeholder="Search courses..."
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                    />
+                    {searchTerm && (
+                        <button
+                            className="clear-search-btn"
+                            onClick={() => setSearchTerm('')}
+                            title="Clear search"
+                        >
+                            ×
+                        </button>
+                    )}
+                </div>
+            )}
+
             {courses.length === 0 ? (
                 <div className="empty-state">
                     <p>No courses available yet.</p>
                     <p>Add a YouTube playlist to get started!</p>
                 </div>
+            ) : filteredCourses.length === 0 ? (
+                <div className="empty-state">
+                    <p>No courses found matching "{searchTerm}".</p>
+                    <p>Try a different search term.</p>
+                </div>
             ) : (
                 <div className="courses-grid">
-                    {courses.map((course) => {
+                    {filteredCourses.map((course) => {
                         const thumbnail = courseThumbnails[course.id] || null;
                         return (
                             <div
