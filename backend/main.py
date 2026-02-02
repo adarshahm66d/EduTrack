@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
-from models import User, Course, CourseVideo, CourseStatus  # Import models to ensure tables are created
+from models import User, Course, CourseVideo, CourseStatus, Progress, Attendance  # Import models to ensure tables are created
 from auth_service import router as auth_router
 from course_service import router as course_router
 from video_service import router as video_router
+from attendance_service import router as progress_router, attendance_router
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -24,6 +25,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(course_router)
 app.include_router(video_router)
+app.include_router(progress_router)
+app.include_router(attendance_router)  # Backward compatibility for /attendance/* routes
 
 @app.get("/")
 def read_root():
@@ -32,12 +35,15 @@ def read_root():
         "services": {
             "auth": "/auth",
             "courses": "/courses",
-            "videos": "/videos"
+            "videos": "/videos",
+            "progress": "/progress",
+            "attendance": "/attendance (also available at /progress/attendance)"
         },
         "health": {
             "auth": "/auth/health",
             "courses": "/courses/health",
-            "videos": "/videos/health"
+            "videos": "/videos/health",
+            "progress": "/progress/health"
         }
     }
 

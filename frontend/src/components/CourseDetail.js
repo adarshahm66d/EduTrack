@@ -22,11 +22,11 @@ const CourseDetail = () => {
             try {
                 setLoading(true);
                 setCheckingRegistration(true);
-                
+
                 // Get user info
                 const userData = await getCurrentUser();
                 setUser(userData);
-                
+
                 // Check registration if student
                 if (userData.role === 'student') {
                     try {
@@ -40,7 +40,7 @@ const CourseDetail = () => {
                     // Admin can always access
                     setIsRegistered(true);
                 }
-                
+
                 const [courseData, videosData] = await Promise.all([
                     getCourse(courseId),
                     getCourseVideos(courseId)
@@ -62,7 +62,7 @@ const CourseDetail = () => {
 
         fetchCourseData();
     }, [courseId]);
-    
+
     const handleRegister = async () => {
         try {
             setRegistering(true);
@@ -171,7 +171,7 @@ const CourseDetail = () => {
                         <p style={{ marginBottom: '2rem', color: '#666' }}>
                             You need to register for this course before you can access the videos.
                         </p>
-                        <button 
+                        <button
                             className="btn-enroll"
                             onClick={handleRegister}
                             disabled={registering}
@@ -221,6 +221,7 @@ const CourseDetail = () => {
                                     videoId={extractVideoId(selectedVideo.video_link)}
                                     videoUrl={selectedVideo.video_link}
                                     onVideoEnd={handleVideoEnd}
+                                    videoDbId={selectedVideo.id}
                                 />
                                 <div className="video-info">
                                     <div className="video-info-header">

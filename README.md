@@ -9,6 +9,7 @@ EduTrack follows a microservices architecture with the following services:
 - **Auth Service** - User authentication and authorization
 - **Course Service** - Course management
 - **Video Service** - Video content management and YouTube playlist integration
+- **Attendance Service** - Video progress tracking and attendance management
 - **API Gateway** - Unified entry point for all services
 
 ## Tech Stack
@@ -32,12 +33,14 @@ EduTrack follows a microservices architecture with the following services:
 EduTrack/
 ├── backend/              # Backend microservices
 │   ├── main.py          # API Gateway
-│   ├── auth_service.py # Authentication service
+│   ├── auth_service.py  # Authentication service
 │   ├── course_service.py# Course service
 │   ├── video_service.py # Video service
+│   ├── attendance_service.py # Progress & Attendance service
 │   ├── models.py        # Database models
 │   ├── schemas.py       # Pydantic schemas
 │   ├── database.py      # Database connection
+│   ├── dependencies.py  # Dependency injection
 │   └── auth.py          # Auth utilities
 ├── frontend/            # React frontend
 │   └── src/
@@ -62,7 +65,7 @@ podman exec -i database psql -U postgres -d edutrack < database/schema.sql
 
 ### 3. Install Backend Dependencies
 ```bash
-podman exec -it backend /bin/sh -c "cd /app && pip install -r requirments.txt"
+podman exec -it backend /bin/sh -c "cd /app && pip install -r requirements.txt"
 ```
 
 ### 4. Start Backend (API Gateway)
@@ -103,12 +106,24 @@ podman exec -it frontend /bin/sh -c "cd /app && npm start"
 - `POST /videos/youtube-playlist` - Add YouTube playlist
 - `GET /videos/health` - Health check
 
+### Attendance Service (`/progress`, `/attendance`)
+- `POST /progress` - Track video watchtime progress
+- `GET /progress/video/{video_id}` - Get video progress
+- `GET /attendance/me` - Get current user's attendance
+- `GET /attendance/user/{user_id}` - Get user attendance (admin only)
+- `GET /attendance/date/{date}` - Get attendance by date (admin only)
+- `GET /attendance/today` - Get today's attendance
+- `GET /progress/health` - Health check
+
 ## Features
 
 - ✅ User authentication (Signup/Login)
 - ✅ Course catalog
 - ✅ YouTube playlist integration
 - ✅ Embedded video player
+- ✅ Video progress tracking
+- ✅ Attendance management
+- ✅ Admin dashboard with student list
 - ✅ Responsive design
 - ✅ Microservices architecture
 - ✅ JWT token authentication
