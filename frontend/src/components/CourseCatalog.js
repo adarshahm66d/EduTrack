@@ -22,41 +22,60 @@ const CourseCatalog = () => {
     const fetchCourses = useCallback(async () => {
         try {
             setLoading(true);
+            setError('');
             const data = await getCourses();
+            
+            // Ensure data is an array
+            if (!Array.isArray(data)) {
+                console.error('Invalid response format:', data);
+                setError('Invalid response from server. Please try again.');
+                setCourses([]);
+                return;
+            }
+            
             setCourses(data);
             
-            // Fetch thumbnails for each course in parallel
-            const thumbnailPromises = data.map(async (course) => {
-                try {
-                    const videos = await getCourseVideos(course.id);
-                    if (videos && videos.length > 0 && videos[0].video_link) {
-                        const videoId = extractVideoId(videos[0].video_link);
-                        if (videoId) {
-                            return {
-                                courseId: course.id,
-                                thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
-                            };
+            // Only fetch thumbnails if there are courses
+            if (data.length > 0) {
+                // Fetch thumbnails for each course in parallel
+                const thumbnailPromises = data.map(async (course) => {
+                    try {
+                        const videos = await getCourseVideos(course.id);
+                        if (videos && videos.length > 0 && videos[0].video_link) {
+                            const videoId = extractVideoId(videos[0].video_link);
+                            if (videoId) {
+                                return {
+                                    courseId: course.id,
+                                    thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                                };
+                            }
                         }
+                    } catch (err) {
+                        console.error(`Error fetching videos for course ${course.id}:`, err);
                     }
-                } catch (err) {
-                    console.error(`Error fetching videos for course ${course.id}:`, err);
-                }
-                return { courseId: course.id, thumbnail: null };
-            });
+                    return { courseId: course.id, thumbnail: null };
+                });
+                
+                const thumbnailResults = await Promise.all(thumbnailPromises);
+                const thumbnailMap = {};
+                thumbnailResults.forEach(({ courseId, thumbnail }) => {
+                    if (thumbnail) {
+                        thumbnailMap[courseId] = thumbnail;
+                    }
+                });
+                
+                setCourseThumbnails(thumbnailMap);
+            } else {
+                // No courses, clear thumbnails
+                setCourseThumbnails({});
+            }
             
-            const thumbnailResults = await Promise.all(thumbnailPromises);
-            const thumbnailMap = {};
-            thumbnailResults.forEach(({ courseId, thumbnail }) => {
-                if (thumbnail) {
-                    thumbnailMap[courseId] = thumbnail;
-                }
-            });
-            
-            setCourseThumbnails(thumbnailMap);
             setError('');
         } catch (err) {
             console.error('Error fetching courses:', err);
-            setError('Failed to load courses. Please try again.');
+            const errorMessage = err.response?.data?.detail || err.message || 'Failed to load courses. Please check if the backend is running.';
+            setError(errorMessage);
+            setCourses([]);
         } finally {
             setLoading(false);
         }
