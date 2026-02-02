@@ -95,4 +95,26 @@ export const addYouTubePlaylist = async (playlistUrl) => {
     return response.data;
 };
 
+// Progress Service API
+export const trackProgress = async (progressData) => {
+    const response = await api.post('/progress', progressData);
+    return response.data;
+};
+
+export const getVideoProgress = async (videoId) => {
+    const response = await api.get(`/progress/video/${videoId}`);
+    return response.data;
+};
+
+// Attendance Service API (now part of progress service, but still available at /attendance/*)
+export const getAttendanceByDate = async (date) => {
+    const response = await api.get(`/attendance/date/${date}`);
+    return response.data;
+};
+
+export const getUserAttendance = async (userId) => {
+    const response = await api.get(`/attendance/user/${userId}`);
+    return response.data;
+};
+
 export default api;

@@ -1,7 +1,0 @@
-Collecting yt-dlp
-  Downloading yt_dlp-2026.1.29-py3-none-any.whl.metadata (181 kB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 182.0/182.0 kB 5.7 MB/s eta 0:00:00
-Downloading yt_dlp-2026.1.29-py3-none-any.whl (3.3 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.3/3.3 MB 11.9 MB/s eta 0:00:00
-Installing collected packages: yt-dlp
-Successfully installed yt-dlp-2026.1.29

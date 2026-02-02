@@ -33,18 +33,19 @@ CREATE TABLE attendance (
 CREATE TABLE progress (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
-    course_id INTEGER,
+    video_id INTEGER NOT NULL,
     date DATE NOT NULL,
     start_time TIME,
     end_time TIME,
+    watch_time INTERVAL,
     CONSTRAINT fk_progress_user 
         FOREIGN KEY (user_id) 
         REFERENCES "user"(id) 
         ON DELETE CASCADE,
-    CONSTRAINT fk_progress_course 
-        FOREIGN KEY (course_id) 
-        REFERENCES course(id) 
-        ON DELETE SET NULL
+    CONSTRAINT fk_progress_video 
+        FOREIGN KEY (video_id) 
+        REFERENCES course_video(id) 
+        ON DELETE CASCADE
 );
 
 -- Create Course_Status table
@@ -82,7 +83,7 @@ CREATE TABLE course_video (
 CREATE INDEX idx_attendance_user_id ON attendance(user_ID);
 CREATE INDEX idx_attendance_date ON attendance(date);
 CREATE INDEX idx_progress_user_id ON progress(user_id);
-CREATE INDEX idx_progress_course_id ON progress(course_id);
+CREATE INDEX idx_progress_video_id ON progress(video_id);
 CREATE INDEX idx_progress_date ON progress(date);
 CREATE INDEX idx_course_status_user_id ON course_status(user_id);
 CREATE INDEX idx_course_status_course_id ON course_status(course_ID);

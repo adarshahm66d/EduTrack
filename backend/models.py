@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Date, Time, Interval
 from sqlalchemy.sql import func
 from database import Base
 
@@ -36,3 +36,23 @@ class CourseStatus(Base):
     course_id = Column(Integer, nullable=False, index=True)  # Changed from course_ID to course_id
     enrolled = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Progress(Base):
+    __tablename__ = "progress"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    video_id = Column(Integer, nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    start_time = Column(Time, nullable=True)
+    end_time = Column(Time, nullable=True)
+    watch_time = Column(Interval, nullable=True)
+
+class Attendance(Base):
+    __tablename__ = "attendance"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    total_time = Column(Interval, nullable=True)
+    status = Column(String(50), nullable=True)

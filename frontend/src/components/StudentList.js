@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getAllStudents, getCurrentUser } from '../api';
+import { getAllStudents, getCurrentUser, getAttendanceByDate } from '../api';
 
 const StudentList = () => {
     const [students, setStudents] = useState([]);
+    const [attendanceMap, setAttendanceMap] = useState({}); // Map of user_id -> attendance record
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -25,14 +26,33 @@ const StudentList = () => {
                     getAllStudents()
                 ]);
                 setUser(userData);
-                
+
                 // Redirect if not admin
                 if (userData.role !== 'admin') {
                     navigate('/dashboard');
                     return;
                 }
-                
+
                 setStudents(studentsData);
+
+                // Fetch today's attendance
+                const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+                try {
+                    const attendanceData = await getAttendanceByDate(today);
+                    // Create a map of user_id -> attendance record
+                    const attendanceMapObj = {};
+                    if (attendanceData && Array.isArray(attendanceData)) {
+                        attendanceData.forEach(attendance => {
+                            if (attendance && attendance.user_id) {
+                                attendanceMapObj[attendance.user_id] = attendance;
+                            }
+                        });
+                    }
+                    setAttendanceMap(attendanceMapObj);
+                } catch (attendanceErr) {
+                    console.error('Failed to fetch attendance:', attendanceErr);
+                    // Don't fail the whole page if attendance fetch fails
+                }
             } catch (err) {
                 console.error('Failed to fetch data:', err);
                 setError('Failed to load student list. Please try again.');
@@ -170,35 +190,72 @@ const StudentList = () => {
                             <table className="students-table">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
                                         <th>Name</th>
                                         <th>Email</th>
                                         <th>Username</th>
                                         <th>Role</th>
+                                        <th>Today's Attendance</th>
+                                        <th>Status</th>
                                         <th>Member Since</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredStudents.map((student) => (
-                                        <tr key={student.id}>
-                                            <td>{student.id}</td>
-                                            <td className="student-name">{student.name}</td>
-                                            <td className="student-email">{student.email}</td>
-                                            <td className="student-username">{student.user_name}</td>
-                                            <td>
-                                                <span className={`role-badge role-${student.role}`}>
-                                                    {student.role}
-                                                </span>
-                                            </td>
-                                            <td className="student-date">
-                                                {new Date(student.created_at).toLocaleDateString('en-US', {
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric'
-                                                })}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {filteredStudents.map((student) => {
+                                        const attendance = attendanceMap[student.id];
+                                        const formatTime = (timeStr) => {
+                                            if (!timeStr) return 'N/A';
+                                            // Handle PostgreSQL INTERVAL format (HH:MM:SS or days HH:MM:SS)
+                                            const parts = timeStr.split(':');
+                                            if (parts.length === 3) {
+                                                const hours = parseInt(parts[0]) || 0;
+                                                const minutes = parseInt(parts[1]) || 0;
+                                                const seconds = parseInt(parts[2]) || 0;
+                                                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                                            }
+                                            return timeStr;
+                                        };
+
+                                        return (
+                                            <tr key={student.id}>
+                                                <td className="student-name">{student.name}</td>
+                                                <td className="student-email">{student.email}</td>
+                                                <td className="student-username">{student.user_name}</td>
+                                                <td>
+                                                    <span className={`role-badge role-${student.role}`}>
+                                                        {student.role}
+                                                    </span>
+                                                </td>
+                                                <td className="attendance-time">
+                                                    {attendance?.total_time ? formatTime(attendance.total_time) : '0:00:00'}
+                                                </td>
+                                                <td>
+                                                    {(() => {
+                                                        if (!attendance) {
+                                                            return <span className="attendance-status attendance-none">Not Started</span>;
+                                                        }
+                                                        const status = attendance.status;
+                                                        if (status && status.trim() !== '') {
+                                                            const statusClass = status.toLowerCase().replace(/\s+/g, '-');
+                                                            return (
+                                                                <span className={`attendance-status attendance-${statusClass}`}>
+                                                                    {status}
+                                                                </span>
+                                                            );
+                                                        }
+                                                        // If attendance exists but no status, show "In Progress"
+                                                        return <span className="attendance-status attendance-in-progress">In Progress</span>;
+                                                    })()}
+                                                </td>
+                                                <td className="student-date">
+                                                    {new Date(student.created_at).toLocaleDateString('en-US', {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    })}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
