@@ -31,7 +31,7 @@ steps:
       - '--add-cloudsql-instances'
       - '${_CLOUDSQL_CONNECTION_NAME}'
       - '--set-env-vars'
-      - 'DATABASE_URL=postgresql://postgres:postgres@/edutrack?host=/cloudsql/${_CLOUDSQL_CONNECTION_NAME},SECRET_KEY=${_SECRET_KEY}'
+      - 'DATABASE_URL=postgresql://postgres:adarsha1234@/edutrack?host=/cloudsql/${_CLOUDSQL_CONNECTION_NAME},SECRET_KEY=${_SECRET_KEY}'
       - '--memory'
       - '512Mi'
       - '--port'
