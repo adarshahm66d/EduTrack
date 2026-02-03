@@ -52,18 +52,18 @@ steps:
 
   # Build and deploy frontend
   - name: 'gcr.io/cloud-builders/docker'
-    id: 'build-frontend'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        BACKEND_URL=$$(cat /workspace/backend_url.txt)
-        echo "Building frontend with backend URL: $$BACKEND_URL"
-        docker build \
-          --build-arg REACT_APP_API_URL="$$BACKEND_URL" \
-          -t gcr.io/$PROJECT_ID/edutrack-frontend:$SHORT_SHA \
-          ./frontend
-    waitFor: ['get-backend-url']
+      id: 'build-frontend'
+      entrypoint: 'bash'
+      args:
+        - '-c'
+        - |
+          # Get the URL directly into a variable
+          B_URL=$(gcloud run services describe edutrack-backend --region=us-central1 --format='value(status.url)')
+          echo "Baking Backend URL: $B_URL"
+          docker build \
+            --build-arg REACT_APP_API_URL="$B_URL" \
+            -t gcr.io/$PROJECT_ID/edutrack-frontend:$SHORT_SHA \
+            ./frontend
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-frontend'
