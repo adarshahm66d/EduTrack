@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from models import Course, CourseVideo, User, CourseStatus
-from schemas import CourseResponse, CourseVideoResponse, CourseRegistrationResponse, EnrollmentCountResponse
+from schemas import CourseResponse, CourseVideoResponse, CourseRegistrationResponse
 from database import get_db
 from dependencies import get_current_user, get_current_user_optional, get_current_user_id
 
@@ -77,22 +77,6 @@ def delete_course(
             detail=f"Error deleting course: {str(e)}"
         )
 
-@router.get("/enrollment/count", response_model=EnrollmentCountResponse)
-def get_enrollment_count(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get the number of courses the current user is enrolled in"""
-    enrolled_count = db.query(CourseStatus).filter(
-        CourseStatus.user_id == current_user.id,
-        CourseStatus.enrolled == True
-    ).count()
-    
-    return {
-        "enrolled_count": enrolled_count,
-        "max_enrollments": 3 if current_user.role == 'student' else None
-    }
-
 @router.get("/{course_id}/registration", response_model=CourseRegistrationResponse)
 def get_course_registration(
     course_id: int,
@@ -128,7 +112,7 @@ def get_course_registration(
 @router.post("/{course_id}/register", response_model=CourseRegistrationResponse)
 def register_for_course(
     course_id: int,
-    current_user: User = Depends(get_current_user),
+    user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """Register user for a course"""
@@ -139,31 +123,9 @@ def register_for_course(
             detail="Course not found"
         )
     
-    # Check enrollment limit for students only (admins have no limit)
-    if current_user.role == 'student':
-        # Count how many courses the student is currently enrolled in
-        enrolled_count = db.query(CourseStatus).filter(
-            CourseStatus.user_id == current_user.id,
-            CourseStatus.enrolled == True
-        ).count()
-        
-        # Check if already registered for this specific course
-        existing_registration = db.query(CourseStatus).filter(
-            CourseStatus.user_id == current_user.id,
-            CourseStatus.course_id == course_id
-        ).first()
-        
-        # If not already registered for this course, check the limit
-        if not existing_registration or not existing_registration.enrolled:
-            if enrolled_count >= 3:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="You can only be enrolled in a maximum of 3 courses. Please unenroll from a course before registering for a new one."
-                )
-    
     # Check if already registered
     existing_registration = db.query(CourseStatus).filter(
-        CourseStatus.user_id == current_user.id,
+        CourseStatus.user_id == user_id,
         CourseStatus.course_id == course_id
     ).first()
     
@@ -187,7 +149,7 @@ def register_for_course(
         # Create new registration
         try:
             new_registration = CourseStatus(
-                user_id=current_user.id,
+                user_id=user_id,
                 course_id=course_id,
                 enrolled=True
             )

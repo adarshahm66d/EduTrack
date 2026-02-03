@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getCurrentUser, getCourses, getCourseVideos, getCourseRegistration, registerForCourse, getEnrollmentCount } from '../api';
+import { getCurrentUser, getCourses, getCourseVideos, getCourseRegistration, registerForCourse } from '../api';
 
 const Dashboard = () => {
     const [user, setUser] = useState(null);
@@ -12,7 +12,6 @@ const Dashboard = () => {
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [registeringCourseId, setRegisteringCourseId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [enrollmentCount, setEnrollmentCount] = useState({ enrolled_count: 0, max_enrollments: 3 });
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -88,14 +87,6 @@ const Dashboard = () => {
 
                 // Fetch registration status for each course (only for students)
                 if (userData.role === 'student') {
-                    // Fetch enrollment count
-                    try {
-                        const enrollmentData = await getEnrollmentCount();
-                        setEnrollmentCount(enrollmentData);
-                    } catch (err) {
-                        console.error('Error fetching enrollment count:', err);
-                    }
-
                     const registrationPromises = coursesData.map(async (course) => {
                         try {
                             const registration = await getCourseRegistration(course.id);
@@ -156,19 +147,9 @@ const Dashboard = () => {
                 ...prev,
                 [courseId]: true
             }));
-            // Refresh enrollment count
-            if (user?.role === 'student') {
-                try {
-                    const enrollmentData = await getEnrollmentCount();
-                    setEnrollmentCount(enrollmentData);
-                } catch (err) {
-                    console.error('Error fetching enrollment count:', err);
-                }
-            }
         } catch (err) {
             console.error('Error registering for course:', err);
-            const errorMessage = err.response?.data?.detail || 'Failed to register for course. Please try again.';
-            alert(errorMessage);
+            alert(err.response?.data?.detail || 'Failed to register for course. Please try again.');
         } finally {
             setRegisteringCourseId(null);
         }
@@ -262,15 +243,7 @@ const Dashboard = () => {
                 <div className="dashboard-header">
                     <h1>Welcome back, {user?.name}!</h1>
                     {user?.role === 'student' && (
-                        <>
-                            <p className="dashboard-subtitle">Continue your learning journey</p>
-                            <p className="enrollment-info">
-                                Enrolled in {enrollmentCount.enrolled_count} of {enrollmentCount.max_enrollments} courses
-                                {enrollmentCount.enrolled_count >= enrollmentCount.max_enrollments && (
-                                    <span className="enrollment-limit-reached"> (Limit reached)</span>
-                                )}
-                            </p>
-                        </>
+                        <p className="dashboard-subtitle">Continue your learning journey</p>
                     )}
                 </div>
 
@@ -370,15 +343,7 @@ const Dashboard = () => {
                                                     <button
                                                         className="btn-enroll"
                                                         onClick={(e) => handleRegister(course.id, e)}
-                                                        disabled={
-                                                            registeringCourseId === course.id ||
-                                                            (user?.role === 'student' && enrollmentCount.enrolled_count >= enrollmentCount.max_enrollments)
-                                                        }
-                                                        title={
-                                                            user?.role === 'student' && enrollmentCount.enrolled_count >= enrollmentCount.max_enrollments
-                                                                ? 'You have reached the maximum enrollment limit of 3 courses'
-                                                                : ''
-                                                        }
+                                                        disabled={registeringCourseId === course.id}
                                                     >
                                                         {registeringCourseId === course.id ? 'Registering...' : 'Register'}
                                                     </button>

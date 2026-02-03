@@ -831,18 +831,6 @@ code {
     margin: 0;
 }
 
-.enrollment-info {
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.85);
-    margin: 0.5rem 0 0 0;
-    font-weight: 500;
-}
-
-.enrollment-limit-reached {
-    color: #ffd700;
-    font-weight: 600;
-}
-
 .courses-section {
     margin-top: 2rem;
 }

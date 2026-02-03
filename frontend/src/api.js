@@ -79,11 +79,6 @@ export const registerForCourse = async (courseId) => {
     return response.data;
 };
 
-export const getEnrollmentCount = async () => {
-    const response = await api.get('/courses/enrollment/count');
-    return response.data;
-};
-
 // Video Service API
 export const getCourseVideos = async (courseId) => {
     const response = await api.get(`/courses/${courseId}/videos`);
