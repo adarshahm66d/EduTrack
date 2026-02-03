@@ -1,0 +1,115 @@
+steps:
+  # Build and deploy backend
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-backend'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/edutrack-backend:$SHORT_SHA'
+      - './backend'
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-backend'
+    args: ['push', 'gcr.io/$PROJECT_ID/edutrack-backend:$SHORT_SHA']
+    waitFor: ['build-backend']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-backend'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'edutrack-backend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/edutrack-backend:$SHORT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - '${_CLOUDSQL_CONNECTION_NAME}'
+      - '--set-env-vars'
+      - 'DATABASE_URL=postgresql://postgres:postgres@/edutrack?host=/cloudsql/${_CLOUDSQL_CONNECTION_NAME},SECRET_KEY=${_SECRET_KEY}'
+      - '--memory'
+      - '512Mi'
+      - '--port'
+      - '8000'
+    waitFor: ['push-backend']
+
+  # Get backend URL
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'get-backend-url'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        BACKEND_URL=$$(gcloud run services describe edutrack-backend --region=us-central1 --format='value(status.url)')
+        echo "$$BACKEND_URL" > /workspace/backend_url.txt
+        echo "Backend URL: $$BACKEND_URL"
+    waitFor: ['deploy-backend']
+
+  # Build and deploy frontend
+  - name: 'gcr.io/cloud-builders/docker'
+      id: 'build-frontend'
+      entrypoint: 'bash'
+      args:
+        - '-c'
+        - |
+          # Get the URL directly into a variable
+          B_URL=$(gcloud run services describe edutrack-backend --region=us-central1 --format='value(status.url)')
+          echo "Baking Backend URL: $B_URL"
+          docker build \
+            --build-arg REACT_APP_API_URL="$B_URL" \
+            -t gcr.io/$PROJECT_ID/edutrack-frontend:$SHORT_SHA \
+            ./frontend
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-frontend'
+    args: ['push', 'gcr.io/$PROJECT_ID/edutrack-frontend:$SHORT_SHA']
+    waitFor: ['build-frontend']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-frontend'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'edutrack-frontend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/edutrack-frontend:$SHORT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--port'
+      - '80'
+    waitFor: ['push-frontend']
+
+  # Update backend CORS
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'update-cors'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        FRONTEND_URL=$$(gcloud run services describe edutrack-frontend --region=us-central1 --format='value(status.url)')
+        gcloud run services update edutrack-backend \
+          --region=us-central1 \
+          --update-env-vars="FRONTEND_URL=$$FRONTEND_URL"
+        echo "Updated CORS with: $$FRONTEND_URL"
+    waitFor: ['deploy-frontend']
+
+images:
+  - 'gcr.io/$PROJECT_ID/edutrack-backend:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/edutrack-frontend:$SHORT_SHA'
+
+substitutions:
+  _CLOUDSQL_CONNECTION_NAME: 'sms-capstone:us-central1:edutrack-db'
+  _SECRET_KEY: '5j3Q-xtu9Kpih84L0uQ4jBfpRBuJt6PVtWDURCo8iCs'
+options:
+  logging: CLOUD_LOGGING_ONLY
