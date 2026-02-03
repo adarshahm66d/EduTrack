@@ -138,7 +138,6 @@ const CourseDetail = () => {
         if (!url) return null;
 
         if (url.includes('googlevideo.com')) {
-            console.warn('Direct playback URL detected, cannot extract video ID:', url);
             return null;
         }
 

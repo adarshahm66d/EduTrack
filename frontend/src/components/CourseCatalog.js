@@ -93,7 +93,6 @@ const CourseCatalog = () => {
                 }
             } catch (err) {
                 // User not logged in or token expired - that's okay for catalog
-                console.log('User not authenticated');
             }
         };
         
@@ -144,14 +143,8 @@ const CourseCatalog = () => {
             // Also refresh the course list as a backup to ensure consistency
             await fetchCourses();
         } catch (err) {
-            console.error('Error adding playlist:', err);
             const errorMessage = err.response?.data?.detail || err.message || 'Failed to add playlist. Please check the URL and try again.';
             setError(errorMessage);
-            console.error('Full error details:', {
-                message: err.message,
-                response: err.response?.data,
-                status: err.response?.status
-            });
         } finally {
             setAdding(false);
         }

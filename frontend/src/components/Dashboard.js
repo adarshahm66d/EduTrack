@@ -63,11 +63,7 @@ const Dashboard = () => {
                                     courseId: course.id,
                                     thumbnail: thumbnailUrl
                                 };
-                            } else {
-                                console.warn(`Could not extract video ID from: ${videos[0].video_link}`);
                             }
-                        } else {
-                            console.warn(`No videos found for course ${course.id}`);
                         }
                     } catch (err) {
                         console.error(`Error fetching videos for course ${course.id}:`, err);
