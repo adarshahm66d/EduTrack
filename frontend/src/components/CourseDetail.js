@@ -55,7 +55,7 @@ const CourseDetail = () => {
                 const userData = await getCurrentUser();
                 setUser(userData);
 
-                // Check registration if student
+                // Check registration for students
                 if (userData.role === 'student') {
                     try {
                         const registration = await getCourseRegistration(courseId);
@@ -561,6 +561,10 @@ const CourseDetail = () => {
         scheduleNextPopupRef.current();
     };
 
+    // Helper function to get dashboard path based on user role
+    const getDashboardPath = () => {
+        return user?.role === 'admin' ? '/admin' : '/dashboard';
+    };
 
     if (loading) {
         return (
@@ -574,7 +578,7 @@ const CourseDetail = () => {
         return (
             <div className="course-detail-error">
                 <p>{error || 'Course not found'}</p>
-                <Link to="/dashboard" className="btn-back">Back to Dashboard</Link>
+                <Link to={getDashboardPath()} className="btn-back">Back to Dashboard</Link>
             </div>
         );
     }
@@ -585,11 +589,11 @@ const CourseDetail = () => {
             <div className="course-detail">
                 <nav className="course-nav">
                     <div className="nav-container">
-                        <Link to="/dashboard" className="logo-link">
+                        <Link to={getDashboardPath()} className="logo-link">
                             <h1>EduTrack</h1>
                         </Link>
                         <div className="nav-links">
-                            <Link to="/dashboard" className="nav-link">Back to Dashboard</Link>
+                            <Link to={getDashboardPath()} className="nav-link">Back to Dashboard</Link>
                         </div>
                     </div>
                 </nav>
@@ -620,11 +624,11 @@ const CourseDetail = () => {
         <div className="course-detail">
             <nav className="course-nav">
                 <div className="nav-container">
-                    <Link to="/dashboard" className="logo-link">
+                    <Link to={getDashboardPath()} className="logo-link">
                         <h1>EduTrack</h1>
                     </Link>
                     <div className="nav-links">
-                        <Link to="/dashboard" className="nav-link">Back to Dashboard</Link>
+                        <Link to={getDashboardPath()} className="nav-link">Back to Dashboard</Link>
                     </div>
                 </div>
             </nav>

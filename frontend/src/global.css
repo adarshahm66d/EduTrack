@@ -1081,6 +1081,12 @@ code {
     margin-bottom: 2rem;
 }
 
+.catalog-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
 /* Search Bar Styles */
 .search-container {
     margin-bottom: 2rem;
@@ -1146,6 +1152,68 @@ code {
     color: #333;
     font-size: 2rem;
     margin: 0;
+}
+
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    color: #667eea;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.back-button:hover {
+    background: #e9ecef;
+    border-color: #667eea;
+    transform: translateX(-2px);
+}
+
+.back-button:active {
+    transform: translateX(0);
+}
+
+.back-button svg {
+    width: 18px;
+    height: 18px;
+}
+
+.back-button-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    color: #667eea;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.back-button-nav:hover {
+    background: #e9ecef;
+    border-color: #667eea;
+    transform: translateX(-2px);
+}
+
+.back-button-nav:active {
+    transform: translateX(0);
+}
+
+.back-button-nav svg {
+    width: 18px;
+    height: 18px;
 }
 
 .add-course-btn {
@@ -2028,6 +2096,12 @@ code {
     gap: 1rem;
 }
 
+.section-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
 .section-header h2 {
     font-size: 1.5rem;
     color: #333;
@@ -2297,6 +2371,12 @@ code {
     padding: 2rem;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.student-list-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .student-list-header h1 {

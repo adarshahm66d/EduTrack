@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getCourses, addYouTubePlaylist, getCourseVideos, getCurrentUser } from '../api';
 
 const CourseCatalog = () => {
@@ -201,7 +201,19 @@ const CourseCatalog = () => {
     return (
         <div className="catalog-container">
             <div className="catalog-header">
-                <h1>Course Catalog</h1>
+                <div className="catalog-header-left">
+                    <Link 
+                        to="/dashboard" 
+                        className="back-button"
+                        title="Back to Dashboard"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        <span>Back</span>
+                    </Link>
+                    <h1>Course Catalog</h1>
+                </div>
                 {user?.role === 'admin' && (
                     <button 
                         className="add-course-btn"
