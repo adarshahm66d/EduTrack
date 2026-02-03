@@ -831,6 +831,18 @@ code {
     margin: 0;
 }
 
+.enrollment-info {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0.5rem 0 0 0;
+    font-weight: 500;
+}
+
+.enrollment-limit-reached {
+    color: #ffd700;
+    font-weight: 600;
+}
+
 .courses-section {
     margin-top: 2rem;
 }
@@ -1540,6 +1552,7 @@ code {
     padding: 0.5rem 0;
     scrollbar-width: thin;
     scrollbar-color: #c1c1c1 transparent;
+    align-items: flex-start;
 }
 
 .horizontal-scroll::-webkit-scrollbar {
@@ -1598,7 +1611,9 @@ code {
     transition: all 0.2s ease;
     border: 3px solid transparent;
     background: transparent;
-    min-width: 200px;
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
     flex-shrink: 0;
 }
 
@@ -1701,6 +1716,7 @@ code {
     flex-direction: column;
     justify-content: flex-start;
     padding: 0.5rem 0.25rem 0 0.25rem;
+    min-height: 60px;
 }
 
 .video-item-title {
@@ -2473,6 +2489,9 @@ code {
     .video-item {
         flex-direction: column;
         gap: 0.75rem;
+        width: 240px;
+        min-width: 240px;
+        max-width: 240px;
     }
 
     .video-item-thumbnail {

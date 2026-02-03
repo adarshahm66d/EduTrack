@@ -57,6 +57,10 @@ class CourseRegistrationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class EnrollmentCountResponse(BaseModel):
+    enrolled_count: int
+    max_enrollments: Optional[int] = None
+
 class ProgressRequest(BaseModel):
     video_id: int
     start_time: Optional[str] = None  # Time as string "HH:MM:SS"
