@@ -6,21 +6,21 @@ from auth_service import router as auth_router
 from course_service import router as course_router
 from video_service import router as video_router
 from attendance_service import router as progress_router, attendance_router
-
+import os
 # Create tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="EduTrack API Gateway", version="1.0.0")
 
 # CORS middleware
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=[FRONTEND_URL, "http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Include service routers
 app.include_router(auth_router)
 app.include_router(course_router)
