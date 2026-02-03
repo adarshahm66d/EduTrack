@@ -108,3 +108,5 @@ images:
 substitutions:
   _CLOUDSQL_CONNECTION_NAME: 'sms-capstone:us-central1:edutrack-db'
   _SECRET_KEY: '5j3Q-xtu9Kpih84L0uQ4jBfpRBuJt6PVtWDURCo8iCs'
+options:
+  logging: CLOUD_LOGGING_ONLY
