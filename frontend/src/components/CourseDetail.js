@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getCourse, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse, getVideoProgress, trackProgress } from '../api';
 import VideoPopup from './VideoPopup';
@@ -9,7 +9,7 @@ const CourseDetail = () => {
     const [videos, setVideos] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
-    const [playlistSearch, setPlaylistSearch] = useState('');
+    const [playlistSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [user, setUser] = useState(null);
@@ -17,19 +17,33 @@ const CourseDetail = () => {
     const [checkingRegistration, setCheckingRegistration] = useState(true);
     const [registering, setRegistering] = useState(false);
     const [videoProgress, setVideoProgress] = useState({}); // { videoId: { watchTime: seconds, percentage: number } }
-    
+
     // Popup system state
     const [showPopup, setShowPopup] = useState(false);
     const [popupType, setPopupType] = useState(null);
     const [popupTimer, setPopupTimer] = useState(null);
     const [isTrackingTime, setIsTrackingTime] = useState(false);
     const [watchStartTime, setWatchStartTime] = useState(null);
-    const [popupStartTime, setPopupStartTime] = useState(null);
     const [totalWatchTime, setTotalWatchTime] = useState(0); // Accumulated watch time in seconds
-    const [lastProgressUpdate, setLastProgressUpdate] = useState(null);
-    
-    const iframeRef = useRef(null);
+    const [hasPlayedToday, setHasPlayedToday] = useState(false); // Track if video has been played today
+    const [hasPausedToday, setHasPausedToday] = useState(false); // Track if video has been paused today (first pause cycle complete)
+    const [sessionStartTime, setSessionStartTime] = useState(null); // Store the start_time for current play session
     const youtubePlayerRef = useRef(null);
+
+    // Refs to store latest values for YouTube player event handlers
+    const isTrackingTimeRef = useRef(isTrackingTime);
+    const showPopupRef = useRef(showPopup);
+    const watchStartTimeRef = useRef(watchStartTime);
+    const totalWatchTimeRef = useRef(totalWatchTime);
+    const popupTimerRef = useRef(popupTimer);
+    const scheduleNextPopupRef = useRef(null);
+    const showRandomPopupRef = useRef(null);
+    const handleVideoEndRef = useRef(null);
+    const saveProgressRef = useRef(null);
+    const hasPlayedTodayRef = useRef(false);
+    const hasPausedTodayRef = useRef(false);
+    const sessionStartTimeRef = useRef(null);
+    const selectedVideoRef = useRef(null);
 
     useEffect(() => {
         const fetchCourseData = async () => {
@@ -158,19 +172,19 @@ const CourseDetail = () => {
         return `${minutes}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleVideoSelect = (video, index) => {
+    const handleVideoSelect = useCallback((video, index) => {
         setSelectedVideo(video);
         setSelectedVideoIndex(index);
         // Scroll to top of video player
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+    }, []);
 
-    const handleNextVideo = () => {
+    const handleNextVideo = useCallback(() => {
         if (selectedVideoIndex < videos.length - 1) {
             const nextIndex = selectedVideoIndex + 1;
             handleVideoSelect(videos[nextIndex], nextIndex);
         }
-    };
+    }, [selectedVideoIndex, videos, handleVideoSelect]);
 
     const handlePreviousVideo = () => {
         if (selectedVideoIndex > 0) {
@@ -179,12 +193,155 @@ const CourseDetail = () => {
         }
     };
 
-    const handleVideoEnd = () => {
+    const handleVideoEnd = useCallback(() => {
         // Auto-play next video when current video ends
         if (selectedVideoIndex < videos.length - 1) {
             handleNextVideo();
         }
+    }, [selectedVideoIndex, videos, handleNextVideo]);
+
+    // Helper function to get current time in HH:MM:SS format
+    const getCurrentTimeString = () => {
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
     };
+
+    // Helper function to calculate seconds between two time strings (HH:MM:SS)
+    const calculateTimeDifference = (startTime, endTime) => {
+        const parseTime = (timeStr) => {
+            const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+            return hours * 3600 + minutes * 60 + seconds;
+        };
+        const startSeconds = parseTime(startTime);
+        const endSeconds = parseTime(endTime);
+
+        // Handle case where end time is before start time (crosses midnight)
+        // For same-day tracking, this shouldn't happen, but if it does, assume it's the next day
+        if (endSeconds < startSeconds) {
+            // Add 24 hours (86400 seconds) to end time
+            return (endSeconds + 86400) - startSeconds;
+        }
+
+        return endSeconds - startSeconds;
+    };
+
+    const saveProgress = useCallback(async (mode, watchTimeSeconds = null) => {
+        if (!selectedVideoRef.current || !user || user.role !== 'student') return;
+
+        try {
+            const progressData = {
+                video_id: selectedVideoRef.current.id
+            };
+
+            if (mode === 'start_only') {
+                // Only send start_time when video starts playing
+                const currentTime = getCurrentTimeString();
+                progressData.start_time = currentTime;
+                // Update both state and ref immediately
+                setSessionStartTime(currentTime);
+                sessionStartTimeRef.current = currentTime;
+            } else if (mode === 'pause_with_watchtime') {
+                // Send end_time and watchtime_seconds when video is paused
+                const startTime = sessionStartTimeRef.current;
+                if (!startTime) {
+                    return; // Need start_time to calculate
+                }
+
+                const endTime = getCurrentTimeString();
+                progressData.end_time = endTime;
+
+                // Calculate watch_time as difference between start_time and end_time
+                if (watchTimeSeconds !== null && watchTimeSeconds > 0) {
+                    progressData.watchtime_seconds = watchTimeSeconds;
+                } else {
+                    // Calculate from time strings
+                    const watchSeconds = calculateTimeDifference(startTime, endTime);
+                    if (watchSeconds > 0) {
+                        progressData.watchtime_seconds = watchSeconds;
+                    } else {
+                        return; // Invalid time difference
+                    }
+                }
+
+                // Clear session start time after pause
+                setSessionStartTime(null);
+                sessionStartTimeRef.current = null;
+            }
+
+            await trackProgress(progressData);
+        } catch (err) {
+            console.error('Error saving progress:', err);
+        }
+    }, [user]);
+
+    const showRandomPopup = useCallback(() => {
+        const popupTypes = ['feedback', 'rating', 'captcha'];
+        const randomType = popupTypes[Math.floor(Math.random() * popupTypes.length)];
+
+        // Save progress before pausing (same as regular pause)
+        const startTime = sessionStartTimeRef.current;
+        if (startTime) {
+            const endTime = getCurrentTimeString();
+            const watchSeconds = calculateTimeDifference(startTime, endTime);
+
+            if (watchSeconds > 0) {
+                saveProgressRef.current('pause_with_watchtime', watchSeconds);
+            }
+        }
+
+        setIsTrackingTime(false);
+
+        // Pause video
+        if (youtubePlayerRef.current) {
+            youtubePlayerRef.current.pauseVideo();
+        }
+
+        setPopupType(randomType);
+        setShowPopup(true);
+    }, []);
+
+    const scheduleNextPopup = useCallback(() => {
+        // Clear existing timer
+        if (popupTimerRef.current) {
+            clearTimeout(popupTimerRef.current);
+        }
+
+        const minMinutes = 5;
+        const maxMinutes = 20;
+        const randomMinutes = Math.random() * (maxMinutes - minMinutes) + minMinutes;
+        const randomMs = randomMinutes * 1000;
+
+        const timer = setTimeout(() => {
+            if (youtubePlayerRef.current && youtubePlayerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
+                showRandomPopupRef.current();
+            } else {
+                // If video is not playing, reschedule
+                scheduleNextPopupRef.current();
+            }
+        }, randomMs);
+
+        setPopupTimer(timer);
+    }, []);
+
+    // Update refs when state changes
+    useEffect(() => {
+        isTrackingTimeRef.current = isTrackingTime;
+        showPopupRef.current = showPopup;
+        watchStartTimeRef.current = watchStartTime;
+        totalWatchTimeRef.current = totalWatchTime;
+        popupTimerRef.current = popupTimer;
+        scheduleNextPopupRef.current = scheduleNextPopup;
+        showRandomPopupRef.current = showRandomPopup;
+        handleVideoEndRef.current = handleVideoEnd;
+        saveProgressRef.current = saveProgress;
+        hasPlayedTodayRef.current = hasPlayedToday;
+        hasPausedTodayRef.current = hasPausedToday;
+        sessionStartTimeRef.current = sessionStartTime;
+        selectedVideoRef.current = selectedVideo;
+    }, [isTrackingTime, showPopup, watchStartTime, totalWatchTime, popupTimer, scheduleNextPopup, showRandomPopup, handleVideoEnd, saveProgress, hasPlayedToday, hasPausedToday, sessionStartTime, selectedVideo]);
 
     // Load YouTube IFrame API
     useEffect(() => {
@@ -193,7 +350,7 @@ const CourseDetail = () => {
             window.onYouTubeIframeAPIReady = () => {
                 // API is ready
             };
-            
+
             const tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             const firstScriptTag = document.getElementsByTagName('script')[0];
@@ -209,17 +366,31 @@ const CourseDetail = () => {
         if (!videoId) return;
 
         // Clear existing popup timer
-        if (popupTimer) {
-            clearTimeout(popupTimer);
+        if (popupTimerRef.current) {
+            clearTimeout(popupTimerRef.current);
             setPopupTimer(null);
         }
 
-        // Reset tracking state
+        // Save progress for previous video before switching (if tracking was active)
+        const prevStartTime = sessionStartTimeRef.current;
+        if (selectedVideoRef.current && isTrackingTimeRef.current && prevStartTime) {
+            // If video was playing, treat it as a pause
+            const endTime = getCurrentTimeString();
+            const watchSeconds = calculateTimeDifference(prevStartTime, endTime);
+            if (watchSeconds > 0) {
+                saveProgressRef.current('pause_with_watchtime', watchSeconds);
+            }
+        }
+
+        // Reset tracking state for new video
         setIsTrackingTime(false);
         setTotalWatchTime(0);
         setWatchStartTime(null);
         setShowPopup(false);
         setPopupType(null);
+        setHasPlayedToday(false);
+        setHasPausedToday(false);
+        setSessionStartTime(null);
 
         const initializePlayer = () => {
             const checkAndInit = () => {
@@ -272,23 +443,50 @@ const CourseDetail = () => {
                         },
                         onStateChange: (event) => {
                             // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
-                            if (event.data === window.YT.PlayerState.PLAYING && !isTrackingTime && !showPopup) {
+                            if (event.data === window.YT.PlayerState.PLAYING && !isTrackingTimeRef.current && !showPopupRef.current) {
                                 setIsTrackingTime(true);
                                 setWatchStartTime(Date.now());
-                                scheduleNextPopup();
-                            } else if (event.data === window.YT.PlayerState.PAUSED && isTrackingTime && !showPopup) {
-                                // Only pause tracking if not due to popup
-                                const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
-                                setTotalWatchTime(prev => prev + elapsed);
+
+                                // Save start_time when video starts playing
+                                // First play: creates entry with start_time only
+                                // Subsequent plays: updates start_time
+                                saveProgressRef.current('start_only');
+
+                                if (!hasPlayedTodayRef.current) {
+                                    setHasPlayedToday(true);
+                                }
+
+                                scheduleNextPopupRef.current();
+                            } else if (event.data === window.YT.PlayerState.PAUSED && isTrackingTimeRef.current && !showPopupRef.current) {
+                                // Video paused - save end_time and watch_time
+                                const startTime = sessionStartTimeRef.current;
+                                if (startTime) {
+                                    const endTime = getCurrentTimeString();
+                                    const watchSeconds = calculateTimeDifference(startTime, endTime);
+
+                                    if (watchSeconds > 0) {
+                                        saveProgressRef.current('pause_with_watchtime', watchSeconds);
+
+                                        // Mark that we've completed first pause cycle
+                                        if (!hasPausedTodayRef.current) {
+                                            setHasPausedToday(true);
+                                        }
+                                    }
+                                }
+
                                 setIsTrackingTime(false);
                             } else if (event.data === window.YT.PlayerState.ENDED) {
                                 // Video ended, save progress and move to next
-                                if (isTrackingTime && watchStartTime) {
-                                    const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
-                                    const finalTime = totalWatchTime + elapsed;
-                                    saveProgress(finalTime);
+                                const startTime = sessionStartTimeRef.current;
+                                if (startTime) {
+                                    const endTime = getCurrentTimeString();
+                                    const watchSeconds = calculateTimeDifference(startTime, endTime);
+
+                                    if (watchSeconds > 0) {
+                                        saveProgressRef.current('pause_with_watchtime', watchSeconds);
+                                    }
                                 }
-                                handleVideoEnd();
+                                handleVideoEndRef.current();
                             }
                         }
                     }
@@ -301,113 +499,69 @@ const CourseDetail = () => {
         initializePlayer();
 
         return () => {
-            if (popupTimer) {
-                clearTimeout(popupTimer);
+            // Save progress when component unmounts or video changes
+            if (selectedVideoRef.current && isTrackingTimeRef.current && sessionStartTimeRef.current) {
+                const endTime = getCurrentTimeString();
+                const watchSeconds = calculateTimeDifference(sessionStartTimeRef.current, endTime);
+                if (watchSeconds > 0) {
+                    saveProgressRef.current('pause_with_watchtime', watchSeconds);
+                }
+            }
+
+            if (popupTimerRef.current) {
+                clearTimeout(popupTimerRef.current);
             }
             if (youtubePlayerRef.current) {
                 try {
                     youtubePlayerRef.current.destroy();
                 } catch (e) {
-                    console.log('Error destroying player');
+                    // Player already destroyed or doesn't exist
                 }
             }
         };
     }, [selectedVideo]);
 
-    const scheduleNextPopup = () => {
-        // Clear existing timer
-        if (popupTimer) {
-            clearTimeout(popupTimer);
-        }
-
-        const minMinutes = 5;
-        const maxMinutes = 20;
-        const randomMinutes = Math.random() * (maxMinutes - minMinutes) + minMinutes;
-        const randomMs = randomMinutes * 1000;
-        
-        const timer = setTimeout(() => {
-            if (youtubePlayerRef.current && youtubePlayerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-                showRandomPopup();
-            } else {
-                // If video is not playing, reschedule
-                scheduleNextPopup();
-            }
-        }, randomMs);
-        
-        setPopupTimer(timer);
-    };
-
-    // Track watch time every 30 seconds when video is playing
+    // Save progress when component unmounts (user navigates away)
     useEffect(() => {
-        if (!isTrackingTime || showPopup || !watchStartTime) return;
-
-        const interval = setInterval(() => {
-            if (isTrackingTime && watchStartTime && !showPopup) {
-                const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
-                const currentTotal = totalWatchTime + elapsed;
-                saveProgress(currentTotal);
-                setTotalWatchTime(currentTotal);
-                setWatchStartTime(Date.now()); // Reset start time
+        return () => {
+            // Save progress when component unmounts
+            if (selectedVideoRef.current && isTrackingTimeRef.current && sessionStartTimeRef.current) {
+                const endTime = getCurrentTimeString();
+                const watchSeconds = calculateTimeDifference(sessionStartTimeRef.current, endTime);
+                if (watchSeconds > 0) {
+                    saveProgressRef.current('pause_with_watchtime', watchSeconds);
+                }
             }
-        }, 30000); // Update every 30 seconds
+        };
+    }, []);
 
-        return () => clearInterval(interval);
-    }, [isTrackingTime, showPopup, watchStartTime, totalWatchTime]);
-
-    const showRandomPopup = () => {
-        const popupTypes = ['feedback', 'rating', 'captcha'];
-        const randomType = popupTypes[Math.floor(Math.random() * popupTypes.length)];
-        
-        // Pause video
-        if (youtubePlayerRef.current) {
-            youtubePlayerRef.current.pauseVideo();
-        }
-        
-        // Pause time tracking
-        if (isTrackingTime && watchStartTime) {
-            const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
-            setTotalWatchTime(prev => prev + elapsed);
-            setIsTrackingTime(false);
-            setPopupStartTime(Date.now());
-        }
-        
-        setPopupType(randomType);
-        setShowPopup(true);
-    };
 
     const handlePopupSubmit = (data) => {
         // Save popup response (you can send this to backend if needed)
-        console.log('Popup submitted:', data);
-        
+
         // Close popup
         setShowPopup(false);
         setPopupType(null);
-        
+
         // Resume video
         if (youtubePlayerRef.current) {
             youtubePlayerRef.current.playVideo();
         }
-        
-        // Resume time tracking (don't count time while popup was shown)
+
+        // Resume time tracking - set new start_time when resuming after popup
         setIsTrackingTime(true);
         setWatchStartTime(Date.now());
-        
+
+        // Set new start_time for the resumed session
+        const currentTime = getCurrentTimeString();
+        setSessionStartTime(currentTime);
+        sessionStartTimeRef.current = currentTime;
+        saveProgressRef.current('start_only');
+
         // Schedule next popup
-        scheduleNextPopup();
+        scheduleNextPopupRef.current();
     };
 
-    const saveProgress = async (seconds) => {
-        if (!selectedVideo || !user || user.role !== 'student' || seconds < 1) return;
-        
-        try {
-            await trackProgress({
-                video_id: selectedVideo.id,
-                watchtime_seconds: seconds
-            });
-        } catch (err) {
-            console.error('Error saving progress:', err);
-        }
-    };
 
     if (loading) {
         return (
@@ -485,7 +639,7 @@ const CourseDetail = () => {
                                 {showPopup && (
                                     <VideoPopup
                                         type={popupType}
-                                        onClose={() => {}} // Popup must be submitted, not closed
+                                        onClose={() => { }} // Popup must be submitted, not closed
                                         onSubmit={handlePopupSubmit}
                                     />
                                 )}
@@ -538,7 +692,7 @@ const CourseDetail = () => {
                         <div className="horizontal-scroll">
                             {videos
                                 .filter((video) => {
-                                    const matchesSearch = playlistSearch === '' || 
+                                    const matchesSearch = playlistSearch === '' ||
                                         video.title.toLowerCase().includes(playlistSearch.toLowerCase());
                                     return matchesSearch;
                                 })
@@ -548,7 +702,7 @@ const CourseDetail = () => {
                                     const isSelected = selectedVideo && selectedVideo.id === video.id;
                                     const progress = videoProgress[video.id] || { watchTime: 0 };
                                     const progressPercentage = progress.watchTime > 0 ? Math.min((progress.watchTime / 600) * 100, 100) : 0;
-                                    
+
                                     return (
                                         <div
                                             key={video.id}
@@ -570,8 +724,8 @@ const CourseDetail = () => {
                                                     )}
                                                     {progress.watchTime > 0 && (
                                                         <div className="video-progress-bar">
-                                                            <div 
-                                                                className="video-progress-fill" 
+                                                            <div
+                                                                className="video-progress-fill"
                                                                 style={{ width: `${progressPercentage}%` }}
                                                             ></div>
                                                         </div>
@@ -579,8 +733,8 @@ const CourseDetail = () => {
                                                     {isSelected && (
                                                         <div className="video-playing-indicator">
                                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                                                                <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)"/>
-                                                                <polygon points="10,8 16,12 10,16" fill="white"/>
+                                                                <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)" />
+                                                                <polygon points="10,8 16,12 10,16" fill="white" />
                                                             </svg>
                                                         </div>
                                                     )}
