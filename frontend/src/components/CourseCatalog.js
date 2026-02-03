@@ -326,17 +326,19 @@ const CourseCatalog = () => {
                                         </span>
                                     </button>
                                 </div>
-                                <div className="course-card-footer">
-                                    <button
-                                        className="btn-enroll"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCourseClick(course.id);
-                                        }}
-                                    >
-                                        Start Course
-                                    </button>
-                                </div>
+                                {user?.role !== 'admin' && (
+                                    <div className="course-card-footer">
+                                        <button
+                                            className="btn-enroll"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCourseClick(course.id);
+                                            }}
+                                        >
+                                            Start Course
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
