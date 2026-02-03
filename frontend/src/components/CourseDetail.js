@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getCourse, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse, getVideoProgress, trackProgress } from '../api';
+import VideoPopup from './VideoPopup';
 
 const CourseDetail = () => {
     const { courseId } = useParams();
@@ -16,6 +17,19 @@ const CourseDetail = () => {
     const [checkingRegistration, setCheckingRegistration] = useState(true);
     const [registering, setRegistering] = useState(false);
     const [videoProgress, setVideoProgress] = useState({}); // { videoId: { watchTime: seconds, percentage: number } }
+    
+    // Popup system state
+    const [showPopup, setShowPopup] = useState(false);
+    const [popupType, setPopupType] = useState(null);
+    const [popupTimer, setPopupTimer] = useState(null);
+    const [isTrackingTime, setIsTrackingTime] = useState(false);
+    const [watchStartTime, setWatchStartTime] = useState(null);
+    const [popupStartTime, setPopupStartTime] = useState(null);
+    const [totalWatchTime, setTotalWatchTime] = useState(0); // Accumulated watch time in seconds
+    const [lastProgressUpdate, setLastProgressUpdate] = useState(null);
+    
+    const iframeRef = useRef(null);
+    const youtubePlayerRef = useRef(null);
 
     useEffect(() => {
         const fetchCourseData = async () => {
@@ -172,13 +186,228 @@ const CourseDetail = () => {
         }
     };
 
-    // Track video progress when video ends
+    // Load YouTube IFrame API
     useEffect(() => {
-        if (selectedVideo) {
-            // This will be handled by iframe events if needed
-            // For now, we rely on the backend tracking
+        if (!window.YT) {
+            // Set up global callback
+            window.onYouTubeIframeAPIReady = () => {
+                // API is ready
+            };
+            
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
+    }, []);
+
+    // Initialize YouTube player when video changes
+    useEffect(() => {
+        if (!selectedVideo) return;
+
+        const videoId = extractVideoId(selectedVideo.video_link);
+        if (!videoId) return;
+
+        // Clear existing popup timer
+        if (popupTimer) {
+            clearTimeout(popupTimer);
+            setPopupTimer(null);
+        }
+
+        // Reset tracking state
+        setIsTrackingTime(false);
+        setTotalWatchTime(0);
+        setWatchStartTime(null);
+        setShowPopup(false);
+        setPopupType(null);
+
+        const initializePlayer = () => {
+            const checkAndInit = () => {
+                if (!window.YT || !window.YT.Player) {
+                    // Wait for API to load
+                    setTimeout(checkAndInit, 100);
+                    return;
+                }
+
+                // Destroy existing player
+                if (youtubePlayerRef.current) {
+                    try {
+                        youtubePlayerRef.current.destroy();
+                    } catch (e) {
+                        // Player already destroyed or doesn't exist
+                    }
+                }
+
+                // Ensure container exists
+                let container = document.getElementById('youtube-player-container');
+                if (!container) {
+                    const wrapper = document.querySelector('.video-wrapper');
+                    if (wrapper) {
+                        container = document.createElement('div');
+                        container.id = 'youtube-player-container';
+                        container.style.cssText = 'width: 100%; aspect-ratio: 16 / 9; position: relative;';
+                        wrapper.innerHTML = '';
+                        wrapper.appendChild(container);
+                    } else {
+                        setTimeout(checkAndInit, 100);
+                        return;
+                    }
+                }
+
+                // Create player div
+                const playerDiv = document.createElement('div');
+                playerDiv.id = 'youtube-player';
+                container.innerHTML = '';
+                container.appendChild(playerDiv);
+
+                youtubePlayerRef.current = new window.YT.Player('youtube-player', {
+                    videoId: videoId,
+                    playerVars: {
+                        enablejsapi: 1,
+                        origin: window.location.origin
+                    },
+                    events: {
+                        onReady: (event) => {
+                            // Video is ready
+                        },
+                        onStateChange: (event) => {
+                            // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
+                            if (event.data === window.YT.PlayerState.PLAYING && !isTrackingTime && !showPopup) {
+                                setIsTrackingTime(true);
+                                setWatchStartTime(Date.now());
+                                scheduleNextPopup();
+                            } else if (event.data === window.YT.PlayerState.PAUSED && isTrackingTime && !showPopup) {
+                                // Only pause tracking if not due to popup
+                                const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
+                                setTotalWatchTime(prev => prev + elapsed);
+                                setIsTrackingTime(false);
+                            } else if (event.data === window.YT.PlayerState.ENDED) {
+                                // Video ended, save progress and move to next
+                                if (isTrackingTime && watchStartTime) {
+                                    const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
+                                    const finalTime = totalWatchTime + elapsed;
+                                    saveProgress(finalTime);
+                                }
+                                handleVideoEnd();
+                            }
+                        }
+                    }
+                });
+            };
+
+            checkAndInit();
+        };
+
+        initializePlayer();
+
+        return () => {
+            if (popupTimer) {
+                clearTimeout(popupTimer);
+            }
+            if (youtubePlayerRef.current) {
+                try {
+                    youtubePlayerRef.current.destroy();
+                } catch (e) {
+                    console.log('Error destroying player');
+                }
+            }
+        };
     }, [selectedVideo]);
+
+    const scheduleNextPopup = () => {
+        // Clear existing timer
+        if (popupTimer) {
+            clearTimeout(popupTimer);
+        }
+
+        const minMinutes = 5;
+        const maxMinutes = 20;
+        const randomMinutes = Math.random() * (maxMinutes - minMinutes) + minMinutes;
+        const randomMs = randomMinutes * 1000;
+        
+        const timer = setTimeout(() => {
+            if (youtubePlayerRef.current && youtubePlayerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
+                showRandomPopup();
+            } else {
+                // If video is not playing, reschedule
+                scheduleNextPopup();
+            }
+        }, randomMs);
+        
+        setPopupTimer(timer);
+    };
+
+    // Track watch time every 30 seconds when video is playing
+    useEffect(() => {
+        if (!isTrackingTime || showPopup || !watchStartTime) return;
+
+        const interval = setInterval(() => {
+            if (isTrackingTime && watchStartTime && !showPopup) {
+                const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
+                const currentTotal = totalWatchTime + elapsed;
+                saveProgress(currentTotal);
+                setTotalWatchTime(currentTotal);
+                setWatchStartTime(Date.now()); // Reset start time
+            }
+        }, 30000); // Update every 30 seconds
+
+        return () => clearInterval(interval);
+    }, [isTrackingTime, showPopup, watchStartTime, totalWatchTime]);
+
+    const showRandomPopup = () => {
+        const popupTypes = ['feedback', 'rating', 'captcha'];
+        const randomType = popupTypes[Math.floor(Math.random() * popupTypes.length)];
+        
+        // Pause video
+        if (youtubePlayerRef.current) {
+            youtubePlayerRef.current.pauseVideo();
+        }
+        
+        // Pause time tracking
+        if (isTrackingTime && watchStartTime) {
+            const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
+            setTotalWatchTime(prev => prev + elapsed);
+            setIsTrackingTime(false);
+            setPopupStartTime(Date.now());
+        }
+        
+        setPopupType(randomType);
+        setShowPopup(true);
+    };
+
+    const handlePopupSubmit = (data) => {
+        // Save popup response (you can send this to backend if needed)
+        console.log('Popup submitted:', data);
+        
+        // Close popup
+        setShowPopup(false);
+        setPopupType(null);
+        
+        // Resume video
+        if (youtubePlayerRef.current) {
+            youtubePlayerRef.current.playVideo();
+        }
+        
+        // Resume time tracking (don't count time while popup was shown)
+        setIsTrackingTime(true);
+        setWatchStartTime(Date.now());
+        
+        // Schedule next popup
+        scheduleNextPopup();
+    };
+
+    const saveProgress = async (seconds) => {
+        if (!selectedVideo || !user || user.role !== 'student' || seconds < 1) return;
+        
+        try {
+            await trackProgress({
+                video_id: selectedVideo.id,
+                watchtime_seconds: seconds
+            });
+        } catch (err) {
+            console.error('Error saving progress:', err);
+        }
+    };
 
     if (loading) {
         return (
@@ -252,14 +481,14 @@ const CourseDetail = () => {
                     {selectedVideo ? (
                         <>
                             <div className="video-wrapper">
-                                <iframe
-                                    src={`https://www.youtube.com/embed/${extractVideoId(selectedVideo.video_link)}?enablejsapi=1&origin=${window.location.origin}`}
-                                    title={selectedVideo.title}
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    className="video-iframe"
-                                ></iframe>
+                                <div id="youtube-player-container"></div>
+                                {showPopup && (
+                                    <VideoPopup
+                                        type={popupType}
+                                        onClose={() => {}} // Popup must be submitted, not closed
+                                        onSubmit={handlePopupSubmit}
+                                    />
+                                )}
                             </div>
 
                             <div className="video-info">
