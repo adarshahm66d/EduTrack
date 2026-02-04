@@ -58,10 +58,10 @@ steps:
       - '-c'
       - |
         # Use $$ for bash variables so Cloud Build doesn't get confused
-        B_URL=$$(gcloud run services describe edutrack-backend --region=us-central1 --format='value(status.url)')
-        echo "Baking Backend URL: $$B_URL"
+        BACKEND_URL=$$(gcloud run services describe edutrack-backend --region=us-central1 --format='value(status.url)')
+        echo "Baking Backend URL: $$BACKEND_URL"
         docker build \
-          --build-arg REACT_APP_API_URL="$$B_URL" \
+          --build-arg REACT_APP_API_URL="$$BACKEND_URL" \
           -t gcr.io/$PROJECT_ID/edutrack-frontend:$SHORT_SHA \
           ./frontend
     waitFor: ['get-backend-url']
