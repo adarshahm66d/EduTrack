@@ -20,7 +20,7 @@ const Landing = () => {
             try {
                 const data = await getCourses();
                 setCourses(data);
-                
+
                 // Fetch thumbnails for each course in parallel
                 const thumbnailPromises = data.map(async (course) => {
                     try {
@@ -39,7 +39,7 @@ const Landing = () => {
                     }
                     return { courseId: course.id, thumbnail: null };
                 });
-                
+
                 const thumbnailResults = await Promise.all(thumbnailPromises);
                 const thumbnailMap = {};
                 thumbnailResults.forEach(({ courseId, thumbnail }) => {
@@ -47,7 +47,7 @@ const Landing = () => {
                         thumbnailMap[courseId] = thumbnail;
                     }
                 });
-                
+
                 setCourseThumbnails(thumbnailMap);
             } catch (err) {
                 setError('Failed to load courses. Please try again later.');
@@ -82,7 +82,7 @@ const Landing = () => {
             'Java': 'Comprehensive Java programming course covering OOP principles, collections framework, multithreading, and enterprise Java development.',
             'IT Security': 'Learn cybersecurity fundamentals, ethical hacking, network security, and best practices to protect systems and data from threats.'
         };
-        
+
         return descriptions[courseTitle] || `Explore ${courseTitle} through comprehensive video tutorials. This course covers essential concepts and practical applications to help you master the subject.`;
     };
 
@@ -145,13 +145,13 @@ const Landing = () => {
                                     const isExpanded = expandedCourses.has(course.id);
                                     const description = getCourseDescription(course.course_title);
                                     const thumbnail = courseThumbnails[course.id] || null;
-                                    
+
                                     return (
                                         <div key={course.id} className={`course-card ${isExpanded ? 'expanded' : ''}`}>
                                             <div className="course-card-header">
                                                 {thumbnail ? (
-                                                    <img 
-                                                        src={thumbnail} 
+                                                    <img
+                                                        src={thumbnail}
                                                         alt={course.course_title}
                                                         className="course-thumbnail"
                                                         onError={(e) => {
@@ -160,7 +160,7 @@ const Landing = () => {
                                                         }}
                                                     />
                                                 ) : null}
-                                                <div 
+                                                <div
                                                     className="course-icon"
                                                     style={{ display: thumbnail ? 'none' : 'flex' }}
                                                 >
@@ -211,7 +211,7 @@ const Landing = () => {
 
             <footer className="landing-footer">
                 <div className="footer-content">
-                    <p>&copy; 2024 EduTrack. All rights reserved.</p>
+                    <p>&copy; 2026 EduTrack. All rights reserved.</p>
                 </div>
             </footer>
         </div>
