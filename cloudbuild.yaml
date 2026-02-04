@@ -50,13 +50,15 @@ steps:
         echo "Backend URL: $$BACKEND_URL"
     waitFor: ['deploy-backend']
 
-  # Build and deploy frontend
+# Build and deploy frontend
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-frontend'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
+        # READ the URL from the file created in the previous step
+        BACKEND_URL=$$(cat /workspace/backend_url.txt)
         echo "Baking Backend URL: $$BACKEND_URL"
         docker build \
           --build-arg REACT_APP_API_URL="$$BACKEND_URL" \
