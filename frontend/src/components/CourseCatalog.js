@@ -12,7 +12,8 @@ const CourseCatalog = () => {
     const [playlistUrl, setPlaylistUrl] = useState('');
     const [adding, setAdding] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [expandedCourses, setExpandedCourses] = useState(new Set());
+    const [expandedCourses, setExpandedCourses] = useState({});
+
     const navigate = useNavigate();
 
     const extractVideoId = (url) => {
@@ -430,18 +431,15 @@ const CourseCatalog = () => {
                                 </div>
                                 <div className="course-card-body">
                                     <h3 className="course-title">{course.course_title}</h3>
-                                    <div 
-                                        className={`course-description ${isExpanded ? 'expanded' : 'collapsed'}`}
-                                        role="region" 
-                                        aria-label="Course description"
-                                        aria-hidden={!isExpanded}
-                                    >
-                                        {isExpanded ? (
+                                    {isExpanded && (
+                                        <div 
+                                            className="course-description"
+                                            role="region" 
+                                            aria-label="Course description"
+                                        >
                                             <p>{description}</p>
-                                        ) : (
-                                            <div className="description-placeholder"></div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                     <button
                                         className="btn-show-details"
                                         onClick={(e) => {
