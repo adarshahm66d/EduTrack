@@ -216,65 +216,68 @@ const CourseCatalog = () => {
         // Generate unique descriptions based on course title keywords
         const titleLower = courseTitle.toLowerCase();
         
-        // Python-related
+        // Python-related - check for "python" first
         if (titleLower.includes('python')) {
+            if (titleLower.includes('full course') || titleLower.includes('2025') || titleLower.includes('2026')) {
+                return 'Complete Python programming course for 2025-26. Master Python from basics to advanced: variables, data types, OOP, file handling, web development, and data science. Perfect for beginners and intermediate learners.';
+            }
             return 'Master Python programming from fundamentals to advanced topics. Learn syntax, data structures, object-oriented programming, and build real-world applications with hands-on projects.';
         }
         
-        // Java-related
+        // Java-related - check specific patterns
         if (titleLower.includes('java')) {
-            if (titleLower.includes('dsa') || titleLower.includes('data structure')) {
-                return 'Comprehensive Java and Data Structures course designed for placement preparation. Master core Java concepts, algorithms, and data structures with practical coding examples.';
+            if (titleLower.includes('dsa') || (titleLower.includes('30 days') && titleLower.includes('placement'))) {
+                return 'Intensive 30-day Java and Data Structures course designed for placement preparation. Master core Java concepts, algorithms, data structures, and problem-solving with practical coding examples and interview preparation.';
             }
             if (titleLower.includes('full stack') || titleLower.includes('developer')) {
-                return 'Become a Full Stack Java Developer with this complete course. Learn backend development, frameworks, databases, and frontend integration to build end-to-end applications.';
+                return 'Become a Full Stack Java Developer with this comprehensive course. Learn backend development with Spring Boot, databases, REST APIs, frontend integration, and build end-to-end applications from scratch.';
             }
-            return 'Learn Java programming from scratch. Cover object-oriented programming, collections, multithreading, JDBC, and enterprise development with Spring framework.';
+            return 'Learn Java programming from scratch. Cover object-oriented programming, collections framework, multithreading, JDBC, and enterprise development with Spring framework.';
         }
         
-        // C/C++ related
-        if (titleLower.includes('c++') || titleLower.includes('cpp')) {
-            return 'Master C++ programming with step-by-step tutorials. Learn from basics to advanced concepts including OOP, STL, memory management, and modern C++ features.';
+        // C/C++ related - check specific patterns
+        if (titleLower.includes('c++') || titleLower.includes('cpp') || (titleLower.includes('learn c++'))) {
+            return 'Master C++ programming with step-by-step tutorials. Learn from basics to advanced concepts including OOP, STL containers, memory management, templates, and modern C++ features. Perfect for beginners.';
         }
-        if (titleLower.includes('c programming') || (titleLower.includes('c ') && titleLower.includes('beginner'))) {
-            return 'Perfect for beginners! Learn C programming fundamentals including variables, data types, control structures, functions, pointers, and file handling with practical examples.';
+        if (titleLower.includes('c programming for beginners') || (titleLower.includes('c programming') && titleLower.includes('beginner'))) {
+            return 'Perfect for absolute beginners! Learn C programming fundamentals including variables, data types, control structures, functions, pointers, arrays, and file handling with practical examples and exercises.';
         }
-        if (titleLower.includes('programming in c')) {
-            return 'Complete introduction to C programming language. Understand programming fundamentals, syntax, memory management, and build your first C programs from scratch.';
+        if (titleLower.includes('programming in c') && !titleLower.includes('beginner')) {
+            return 'Complete introduction to C programming language. Understand programming fundamentals, syntax, memory management, data structures, and build your first C programs from scratch with hands-on practice.';
         }
         
-        // React/JavaScript related
+        // React/JavaScript related - check specific patterns
         if (titleLower.includes('react')) {
-            if (titleLower.includes('hindi')) {
-                return 'React.js को हिंदी में सीखें! Master React fundamentals, hooks, components, state management, and build modern web applications with step-by-step tutorials.';
+            if (titleLower.includes('hindi') || titleLower.includes('tutorials in hindi')) {
+                return 'React.js को हिंदी में सीखें! Master React fundamentals, hooks, components, state management, routing, and build modern web applications with step-by-step tutorials in Hindi.';
             }
-            if (titleLower.includes('chai') || titleLower.includes('project')) {
-                return 'Learn React.js with hands-on projects. Build real-world applications, understand component architecture, hooks, routing, and modern React development practices.';
+            if (titleLower.includes('chai') || (titleLower.includes('react') && titleLower.includes('project'))) {
+                return 'Learn React.js with hands-on projects and real-world examples. Build complete applications, understand component architecture, hooks, routing, context API, and modern React development practices.';
             }
-            return 'Master React.js from basics to advanced. Learn components, hooks, context API, routing, state management, and build interactive single-page applications.';
+            return 'Master React.js from basics to advanced. Learn functional components, hooks, context API, React Router, state management, and build interactive single-page applications.';
         }
         if (titleLower.includes('javascript')) {
-            return 'Complete JavaScript course covering ES6+, async programming, DOM manipulation, APIs, and modern JavaScript features. Build dynamic web applications.';
+            return 'Complete JavaScript course covering ES6+, async programming, promises, async/await, DOM manipulation, APIs, and modern JavaScript features. Build dynamic and interactive web applications.';
         }
         
         // HTML/CSS related
         if (titleLower.includes('html')) {
-            return 'Learn HTML5 fundamentals and modern web development. Master semantic HTML, forms, multimedia, accessibility, and create well-structured web pages.';
+            return 'Learn HTML5 fundamentals and modern web development. Master semantic HTML, forms, multimedia elements, accessibility features, and create well-structured, responsive web pages.';
         }
         
         // Web Development
         if (titleLower.includes('web development') || titleLower.includes('web dev')) {
-            return 'Full-stack web development course covering HTML, CSS, JavaScript, backend technologies, databases, and deployment. Build complete web applications.';
+            return 'Full-stack web development course covering HTML, CSS, JavaScript, backend technologies, databases, APIs, and deployment. Build complete, production-ready web applications.';
         }
         
         // UX/UI Design
         if (titleLower.includes('ux') || titleLower.includes('design')) {
-            return 'Learn UX/UI design principles, user research, wireframing, prototyping, and design tools. Create user-friendly interfaces and improve user experience.';
+            return 'Learn UX/UI design principles, user research methodologies, wireframing, prototyping, design systems, and modern design tools. Create user-friendly, accessible interfaces.';
         }
         
         // Security
         if (titleLower.includes('security') || titleLower.includes('cyber')) {
-            return 'Comprehensive cybersecurity course covering network security, ethical hacking, vulnerability assessment, encryption, and best practices for protecting systems.';
+            return 'Comprehensive cybersecurity course covering network security, ethical hacking, vulnerability assessment, encryption, penetration testing, and best practices for protecting systems and data.';
         }
         
         // Default: Generate a more unique description based on title
@@ -427,11 +430,18 @@ const CourseCatalog = () => {
                                 </div>
                                 <div className="course-card-body">
                                     <h3 className="course-title">{course.course_title}</h3>
-                                    {isExpanded && (
-                                        <div className="course-description" role="region" aria-label="Course description">
+                                    <div 
+                                        className={`course-description ${isExpanded ? 'expanded' : 'collapsed'}`}
+                                        role="region" 
+                                        aria-label="Course description"
+                                        aria-hidden={!isExpanded}
+                                    >
+                                        {isExpanded ? (
                                             <p>{description}</p>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <div className="description-placeholder"></div>
+                                        )}
+                                    </div>
                                     <button
                                         className="btn-show-details"
                                         onClick={(e) => {
