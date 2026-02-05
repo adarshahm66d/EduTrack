@@ -100,10 +100,38 @@ const CourseCatalog = () => {
         fetchCourses();
     }, [fetchCourses]);
 
+    const validatePlaylistUrl = (url) => {
+        if (!url || !url.trim()) {
+            return { valid: false, message: 'Please enter a YouTube playlist URL' };
+        }
+        
+        const trimmedUrl = url.trim();
+        
+        // Check for YouTube playlist patterns
+        const playlistPatterns = [
+            /youtube\.com\/playlist\?list=[a-zA-Z0-9_-]+/i,
+            /youtube\.com\/watch\?.*list=[a-zA-Z0-9_-]+/i,
+            /youtu\.be\/.*\?list=[a-zA-Z0-9_-]+/i
+        ];
+        
+        const isValid = playlistPatterns.some(pattern => pattern.test(trimmedUrl));
+        
+        if (!isValid) {
+            return {
+                valid: false,
+                message: 'Please enter a valid YouTube playlist URL. Example: https://www.youtube.com/playlist?list=PLrAXtmRdnEQy6nuLMH6PmYvJz5hNqDxWx'
+            };
+        }
+        
+        return { valid: true };
+    };
+
     const handleAddPlaylist = async (e) => {
         e.preventDefault();
-        if (!playlistUrl.trim()) {
-            setError('Please enter a valid YouTube playlist URL');
+        
+        const validation = validatePlaylistUrl(playlistUrl);
+        if (!validation.valid) {
+            setError(validation.message);
             return;
         }
 
@@ -143,7 +171,25 @@ const CourseCatalog = () => {
             // Also refresh the course list as a backup to ensure consistency
             await fetchCourses();
         } catch (err) {
-            const errorMessage = err.response?.data?.detail || err.message || 'Failed to add playlist. Please check the URL and try again.';
+            let errorMessage = 'Failed to add playlist. Please check the URL and try again.';
+            
+            if (err.response?.data?.detail) {
+                errorMessage = err.response.data.detail;
+            } else if (err.message) {
+                // Provide more helpful error messages
+                if (err.message.includes('403') || err.message.includes('Forbidden')) {
+                    errorMessage = 'YouTube is blocking the request. Please ensure the playlist is public and try again in a few minutes.';
+                } else if (err.message.includes('404') || err.message.includes('not found')) {
+                    errorMessage = 'Playlist not found. Please verify the URL is correct and the playlist exists.';
+                } else if (err.message.includes('private') || err.message.includes('unavailable')) {
+                    errorMessage = 'The playlist is private or unavailable. Please ensure the playlist is public and accessible.';
+                } else if (err.message.includes('timeout') || err.message.includes('ECONNABORTED')) {
+                    errorMessage = 'Request timed out. The playlist may be very large. Please try again or use a smaller playlist.';
+                } else {
+                    errorMessage = `Error: ${err.message}. Please verify the playlist URL is correct.`;
+                }
+            }
+            
             setError(errorMessage);
         } finally {
             setAdding(false);
@@ -167,17 +213,74 @@ const CourseCatalog = () => {
     };
 
     const getCourseDescription = (courseTitle) => {
-        // Generate a default description based on course title
-        const descriptions = {
-            'JavaScript': 'Learn JavaScript from basics to advanced concepts. Master modern ES6+ features, DOM manipulation, async programming, and build real-world projects.',
-            'C++': 'Master C++ programming with comprehensive tutorials covering object-oriented programming, data structures, algorithms, and advanced C++ features.',
-            'HTML': 'Start your web development journey with HTML. Learn to create structured, semantic web pages and understand the foundation of modern web development.',
-            'C Language': 'Learn the fundamentals of C programming language. Perfect for beginners to understand programming concepts, memory management, and system programming.',
-            'Java': 'Comprehensive Java programming course covering OOP principles, collections framework, multithreading, and enterprise Java development.',
-            'IT Security': 'Learn cybersecurity fundamentals, ethical hacking, network security, and best practices to protect systems and data from threats.'
-        };
+        // Generate unique descriptions based on course title keywords
+        const titleLower = courseTitle.toLowerCase();
         
-        return descriptions[courseTitle] || `Explore ${courseTitle} through comprehensive video tutorials. This course covers essential concepts and practical applications to help you master the subject.`;
+        // Python-related
+        if (titleLower.includes('python')) {
+            return 'Master Python programming from fundamentals to advanced topics. Learn syntax, data structures, object-oriented programming, and build real-world applications with hands-on projects.';
+        }
+        
+        // Java-related
+        if (titleLower.includes('java')) {
+            if (titleLower.includes('dsa') || titleLower.includes('data structure')) {
+                return 'Comprehensive Java and Data Structures course designed for placement preparation. Master core Java concepts, algorithms, and data structures with practical coding examples.';
+            }
+            if (titleLower.includes('full stack') || titleLower.includes('developer')) {
+                return 'Become a Full Stack Java Developer with this complete course. Learn backend development, frameworks, databases, and frontend integration to build end-to-end applications.';
+            }
+            return 'Learn Java programming from scratch. Cover object-oriented programming, collections, multithreading, JDBC, and enterprise development with Spring framework.';
+        }
+        
+        // C/C++ related
+        if (titleLower.includes('c++') || titleLower.includes('cpp')) {
+            return 'Master C++ programming with step-by-step tutorials. Learn from basics to advanced concepts including OOP, STL, memory management, and modern C++ features.';
+        }
+        if (titleLower.includes('c programming') || (titleLower.includes('c ') && titleLower.includes('beginner'))) {
+            return 'Perfect for beginners! Learn C programming fundamentals including variables, data types, control structures, functions, pointers, and file handling with practical examples.';
+        }
+        if (titleLower.includes('programming in c')) {
+            return 'Complete introduction to C programming language. Understand programming fundamentals, syntax, memory management, and build your first C programs from scratch.';
+        }
+        
+        // React/JavaScript related
+        if (titleLower.includes('react')) {
+            if (titleLower.includes('hindi')) {
+                return 'React.js को हिंदी में सीखें! Master React fundamentals, hooks, components, state management, and build modern web applications with step-by-step tutorials.';
+            }
+            if (titleLower.includes('chai') || titleLower.includes('project')) {
+                return 'Learn React.js with hands-on projects. Build real-world applications, understand component architecture, hooks, routing, and modern React development practices.';
+            }
+            return 'Master React.js from basics to advanced. Learn components, hooks, context API, routing, state management, and build interactive single-page applications.';
+        }
+        if (titleLower.includes('javascript')) {
+            return 'Complete JavaScript course covering ES6+, async programming, DOM manipulation, APIs, and modern JavaScript features. Build dynamic web applications.';
+        }
+        
+        // HTML/CSS related
+        if (titleLower.includes('html')) {
+            return 'Learn HTML5 fundamentals and modern web development. Master semantic HTML, forms, multimedia, accessibility, and create well-structured web pages.';
+        }
+        
+        // Web Development
+        if (titleLower.includes('web development') || titleLower.includes('web dev')) {
+            return 'Full-stack web development course covering HTML, CSS, JavaScript, backend technologies, databases, and deployment. Build complete web applications.';
+        }
+        
+        // UX/UI Design
+        if (titleLower.includes('ux') || titleLower.includes('design')) {
+            return 'Learn UX/UI design principles, user research, wireframing, prototyping, and design tools. Create user-friendly interfaces and improve user experience.';
+        }
+        
+        // Security
+        if (titleLower.includes('security') || titleLower.includes('cyber')) {
+            return 'Comprehensive cybersecurity course covering network security, ethical hacking, vulnerability assessment, encryption, and best practices for protecting systems.';
+        }
+        
+        // Default: Generate a more unique description based on title
+        const words = courseTitle.split(/\s+/).filter(w => w.length > 2);
+        const mainTopic = words[0] || 'this subject';
+        return `Dive deep into ${mainTopic} with this comprehensive course. Learn essential concepts, practical skills, and real-world applications through structured video tutorials designed for all skill levels.`;
     };
 
     const handleSearchChange = (e) => {
@@ -234,12 +337,18 @@ const CourseCatalog = () => {
                                 type="url"
                                 id="playlistUrl"
                                 value={playlistUrl}
-                                onChange={(e) => setPlaylistUrl(e.target.value)}
-                                placeholder="https://www.youtube.com/playlist?list=..."
+                                onChange={(e) => {
+                                    setPlaylistUrl(e.target.value);
+                                    setError(''); // Clear error when user types
+                                }}
+                                placeholder="https://www.youtube.com/playlist?list=PLrAXtmRdnEQy6nuLMH6PmYvJz5hNqDxWx"
                                 required
                             />
                             <small className="form-hint">
-                                Paste a YouTube playlist URL. All videos in the playlist will be added as course videos.
+                                <strong>Valid formats:</strong><br />
+                                • https://www.youtube.com/playlist?list=PLAYLIST_ID<br />
+                                • https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID<br />
+                                <em>Note: The playlist must be public and accessible.</em>
                             </small>
                         </div>
                         <button type="submit" className="submit-btn" disabled={adding}>

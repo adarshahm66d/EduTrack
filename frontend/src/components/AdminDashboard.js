@@ -126,10 +126,38 @@ const AdminDashboard = () => {
         }
     };
 
+    const validatePlaylistUrl = (url) => {
+        if (!url || !url.trim()) {
+            return { valid: false, message: 'Please enter a YouTube playlist URL' };
+        }
+        
+        const trimmedUrl = url.trim();
+        
+        // Check for YouTube playlist patterns
+        const playlistPatterns = [
+            /youtube\.com\/playlist\?list=[a-zA-Z0-9_-]+/i,
+            /youtube\.com\/watch\?.*list=[a-zA-Z0-9_-]+/i,
+            /youtu\.be\/.*\?list=[a-zA-Z0-9_-]+/i
+        ];
+        
+        const isValid = playlistPatterns.some(pattern => pattern.test(trimmedUrl));
+        
+        if (!isValid) {
+            return {
+                valid: false,
+                message: 'Please enter a valid YouTube playlist URL. Example: https://www.youtube.com/playlist?list=PLrAXtmRdnEQy6nuLMH6PmYvJz5hNqDxWx'
+            };
+        }
+        
+        return { valid: true };
+    };
+
     const handleAddPlaylist = async (e) => {
         e.preventDefault();
-        if (!playlistUrl.trim()) {
-            setError('Please enter a valid YouTube playlist URL');
+        
+        const validation = validatePlaylistUrl(playlistUrl);
+        if (!validation.valid) {
+            setError(validation.message);
             return;
         }
 
@@ -170,7 +198,25 @@ const AdminDashboard = () => {
             await fetchCourses();
         } catch (err) {
             console.error('Error adding playlist:', err);
-            const errorMessage = err.response?.data?.detail || err.message || 'Failed to add playlist. Please check the URL and try again.';
+            let errorMessage = 'Failed to add playlist. Please check the URL and try again.';
+            
+            if (err.response?.data?.detail) {
+                errorMessage = err.response.data.detail;
+            } else if (err.message) {
+                // Provide more helpful error messages
+                if (err.message.includes('403') || err.message.includes('Forbidden')) {
+                    errorMessage = 'YouTube is blocking the request. Please ensure the playlist is public and try again in a few minutes.';
+                } else if (err.message.includes('404') || err.message.includes('not found')) {
+                    errorMessage = 'Playlist not found. Please verify the URL is correct and the playlist exists.';
+                } else if (err.message.includes('private') || err.message.includes('unavailable')) {
+                    errorMessage = 'The playlist is private or unavailable. Please ensure the playlist is public and accessible.';
+                } else if (err.message.includes('timeout') || err.message.includes('ECONNABORTED')) {
+                    errorMessage = 'Request timed out. The playlist may be very large. Please try again or use a smaller playlist.';
+                } else {
+                    errorMessage = `Error: ${err.message}. Please verify the playlist URL is correct.`;
+                }
+            }
+            
             setError(errorMessage);
             console.error('Full error details:', {
                 message: err.message,
@@ -314,12 +360,18 @@ const AdminDashboard = () => {
                                             type="url"
                                             id="playlistUrl"
                                             value={playlistUrl}
-                                            onChange={(e) => setPlaylistUrl(e.target.value)}
-                                            placeholder="https://www.youtube.com/playlist?list=..."
+                                            onChange={(e) => {
+                                                setPlaylistUrl(e.target.value);
+                                                setError(''); // Clear error when user types
+                                            }}
+                                            placeholder="https://www.youtube.com/playlist?list=PLrAXtmRdnEQy6nuLMH6PmYvJz5hNqDxWx"
                                             required
                                         />
                                         <small className="form-hint">
-                                            Paste a YouTube playlist URL. All videos in the playlist will be added as course videos.
+                                            <strong>Valid formats:</strong><br />
+                                            • https://www.youtube.com/playlist?list=PLAYLIST_ID<br />
+                                            • https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID<br />
+                                            <em>Note: The playlist must be public and accessible.</em>
                                         </small>
                                     </div>
                                     <button type="submit" className="submit-btn" disabled={adding}>
