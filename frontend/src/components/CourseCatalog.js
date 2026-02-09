@@ -12,7 +12,7 @@ const CourseCatalog = () => {
     const [playlistUrl, setPlaylistUrl] = useState('');
     const [adding, setAdding] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [expandedCourses, setExpandedCourses] = useState({});
+    const [expandedCourses, setExpandedCourses] = useState(new Set());
 
     const navigate = useNavigate();
 
@@ -27,7 +27,7 @@ const CourseCatalog = () => {
             setLoading(true);
             setError('');
             const data = await getCourses();
-            
+
             // Ensure data is an array
             if (!Array.isArray(data)) {
                 console.error('Invalid response format:', data);
@@ -35,9 +35,9 @@ const CourseCatalog = () => {
                 setCourses([]);
                 return;
             }
-            
+
             setCourses(data);
-            
+
             // Only fetch thumbnails if there are courses
             if (data.length > 0) {
                 // Fetch thumbnails for each course in parallel
@@ -58,7 +58,7 @@ const CourseCatalog = () => {
                     }
                     return { courseId: course.id, thumbnail: null };
                 });
-                
+
                 const thumbnailResults = await Promise.all(thumbnailPromises);
                 const thumbnailMap = {};
                 thumbnailResults.forEach(({ courseId, thumbnail }) => {
@@ -66,13 +66,13 @@ const CourseCatalog = () => {
                         thumbnailMap[courseId] = thumbnail;
                     }
                 });
-                
+
                 setCourseThumbnails(thumbnailMap);
             } else {
                 // No courses, clear thumbnails
                 setCourseThumbnails({});
             }
-            
+
             setError('');
         } catch (err) {
             console.error('Error fetching courses:', err);
@@ -96,7 +96,7 @@ const CourseCatalog = () => {
                 // User not logged in or token expired - that's okay for catalog
             }
         };
-        
+
         fetchUser();
         fetchCourses();
     }, [fetchCourses]);
@@ -105,31 +105,31 @@ const CourseCatalog = () => {
         if (!url || !url.trim()) {
             return { valid: false, message: 'Please enter a YouTube playlist URL' };
         }
-        
+
         const trimmedUrl = url.trim();
-        
+
         // Check for YouTube playlist patterns
         const playlistPatterns = [
             /youtube\.com\/playlist\?list=[a-zA-Z0-9_-]+/i,
             /youtube\.com\/watch\?.*list=[a-zA-Z0-9_-]+/i,
             /youtu\.be\/.*\?list=[a-zA-Z0-9_-]+/i
         ];
-        
+
         const isValid = playlistPatterns.some(pattern => pattern.test(trimmedUrl));
-        
+
         if (!isValid) {
             return {
                 valid: false,
                 message: 'Please enter a valid YouTube playlist URL. Example: https://www.youtube.com/playlist?list=PLrAXtmRdnEQy6nuLMH6PmYvJz5hNqDxWx'
             };
         }
-        
+
         return { valid: true };
     };
 
     const handleAddPlaylist = async (e) => {
         e.preventDefault();
-        
+
         const validation = validatePlaylistUrl(playlistUrl);
         if (!validation.valid) {
             setError(validation.message);
@@ -142,7 +142,7 @@ const CourseCatalog = () => {
             const newCourse = await addYouTubePlaylist(playlistUrl);
             setPlaylistUrl('');
             setShowAddForm(false);
-            
+
             // Add the new course directly to the state immediately
             setCourses(prevCourses => {
                 // Check if course already exists (avoid duplicates)
@@ -173,7 +173,7 @@ const CourseCatalog = () => {
             await fetchCourses();
         } catch (err) {
             let errorMessage = 'Failed to add playlist. Please check the URL and try again.';
-            
+
             if (err.response?.data?.detail) {
                 errorMessage = err.response.data.detail;
             } else if (err.message) {
@@ -190,7 +190,7 @@ const CourseCatalog = () => {
                     errorMessage = `Error: ${err.message}. Please verify the playlist URL is correct.`;
                 }
             }
-            
+
             setError(errorMessage);
         } finally {
             setAdding(false);
@@ -216,7 +216,7 @@ const CourseCatalog = () => {
     const getCourseDescription = (courseTitle) => {
         // Generate unique descriptions based on course title keywords
         const titleLower = courseTitle.toLowerCase();
-        
+
         // Python-related - check for "python" first
         if (titleLower.includes('python')) {
             if (titleLower.includes('full course') || titleLower.includes('2025') || titleLower.includes('2026')) {
@@ -224,7 +224,7 @@ const CourseCatalog = () => {
             }
             return 'Master Python programming from fundamentals to advanced topics. Learn syntax, data structures, object-oriented programming, and build real-world applications with hands-on projects.';
         }
-        
+
         // Java-related - check specific patterns
         if (titleLower.includes('java')) {
             if (titleLower.includes('dsa') || (titleLower.includes('30 days') && titleLower.includes('placement'))) {
@@ -235,7 +235,7 @@ const CourseCatalog = () => {
             }
             return 'Learn Java programming from scratch. Cover object-oriented programming, collections framework, multithreading, JDBC, and enterprise development with Spring framework.';
         }
-        
+
         // C/C++ related - check specific patterns
         if (titleLower.includes('c++') || titleLower.includes('cpp') || (titleLower.includes('learn c++'))) {
             return 'Master C++ programming with step-by-step tutorials. Learn from basics to advanced concepts including OOP, STL containers, memory management, templates, and modern C++ features. Perfect for beginners.';
@@ -246,7 +246,7 @@ const CourseCatalog = () => {
         if (titleLower.includes('programming in c') && !titleLower.includes('beginner')) {
             return 'Complete introduction to C programming language. Understand programming fundamentals, syntax, memory management, data structures, and build your first C programs from scratch with hands-on practice.';
         }
-        
+
         // React/JavaScript related - check specific patterns
         if (titleLower.includes('react')) {
             if (titleLower.includes('hindi') || titleLower.includes('tutorials in hindi')) {
@@ -260,27 +260,27 @@ const CourseCatalog = () => {
         if (titleLower.includes('javascript')) {
             return 'Complete JavaScript course covering ES6+, async programming, promises, async/await, DOM manipulation, APIs, and modern JavaScript features. Build dynamic and interactive web applications.';
         }
-        
+
         // HTML/CSS related
         if (titleLower.includes('html')) {
             return 'Learn HTML5 fundamentals and modern web development. Master semantic HTML, forms, multimedia elements, accessibility features, and create well-structured, responsive web pages.';
         }
-        
+
         // Web Development
         if (titleLower.includes('web development') || titleLower.includes('web dev')) {
             return 'Full-stack web development course covering HTML, CSS, JavaScript, backend technologies, databases, APIs, and deployment. Build complete, production-ready web applications.';
         }
-        
+
         // UX/UI Design
         if (titleLower.includes('ux') || titleLower.includes('design')) {
             return 'Learn UX/UI design principles, user research methodologies, wireframing, prototyping, design systems, and modern design tools. Create user-friendly, accessible interfaces.';
         }
-        
+
         // Security
         if (titleLower.includes('security') || titleLower.includes('cyber')) {
             return 'Comprehensive cybersecurity course covering network security, ethical hacking, vulnerability assessment, encryption, penetration testing, and best practices for protecting systems and data.';
         }
-        
+
         // Default: Generate a more unique description based on title
         const words = courseTitle.split(/\s+/).filter(w => w.length > 2);
         const mainTopic = words[0] || 'this subject';
@@ -309,8 +309,8 @@ const CourseCatalog = () => {
         <div className="catalog-container">
             <div className="catalog-header">
                 <div className="catalog-header-left">
-                    <Link 
-                        to="/dashboard" 
+                    <Link
+                        to="/dashboard"
                         className="back-button"
                         title="Back to Dashboard"
                     >
@@ -322,7 +322,7 @@ const CourseCatalog = () => {
                     <h1>Course Catalog</h1>
                 </div>
                 {user?.role === 'admin' && (
-                    <button 
+                    <button
                         className="add-course-btn"
                         onClick={() => setShowAddForm(!showAddForm)}
                     >
@@ -412,8 +412,8 @@ const CourseCatalog = () => {
                             >
                                 <div className="course-card-header">
                                     {thumbnail ? (
-                                        <img 
-                                            src={thumbnail} 
+                                        <img
+                                            src={thumbnail}
                                             alt={course.course_title}
                                             className="course-thumbnail"
                                             onError={(e) => {
@@ -422,7 +422,7 @@ const CourseCatalog = () => {
                                             }}
                                         />
                                     ) : null}
-                                    <div 
+                                    <div
                                         className="course-icon"
                                         style={{ display: thumbnail ? 'none' : 'flex' }}
                                     >
@@ -432,9 +432,9 @@ const CourseCatalog = () => {
                                 <div className="course-card-body">
                                     <h3 className="course-title">{course.course_title}</h3>
                                     {isExpanded && (
-                                        <div 
+                                        <div
                                             className="course-description"
-                                            role="region" 
+                                            role="region"
                                             aria-label="Course description"
                                         >
                                             <p>{description}</p>
