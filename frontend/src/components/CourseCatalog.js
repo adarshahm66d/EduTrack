@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { getCourses, addYouTubePlaylist, getCourseVideos, getCurrentUser } from '../api';
+import { Link } from 'react-router-dom';
+import { getCourses, addYouTubePlaylist, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse } from '../api';
 
 const CourseCatalog = () => {
     const [courses, setCourses] = useState([]);
@@ -13,8 +13,8 @@ const CourseCatalog = () => {
     const [adding, setAdding] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedCourses, setExpandedCourses] = useState(new Set());
-
-    const navigate = useNavigate();
+    const [courseRegistrations, setCourseRegistrations] = useState({});
+    const [registeringCourseId, setRegisteringCourseId] = useState(null);
 
     const extractVideoId = (url) => {
         if (!url) return null;
@@ -100,6 +100,40 @@ const CourseCatalog = () => {
         fetchUser();
         fetchCourses();
     }, [fetchCourses]);
+
+    // Fetch registration status for students when courses and user are available
+    useEffect(() => {
+        const fetchRegistrations = async () => {
+            if (user?.role === 'student' && courses.length > 0) {
+                try {
+                    const registrationPromises = courses.map(async (course) => {
+                        try {
+                            const registration = await getCourseRegistration(course.id);
+                            return {
+                                courseId: course.id,
+                                enrolled: registration.enrolled
+                            };
+                        } catch (err) {
+                            console.error(`Error fetching registration for course ${course.id}:`, err);
+                            return { courseId: course.id, enrolled: false };
+                        }
+                    });
+
+                    const registrationResults = await Promise.all(registrationPromises);
+                    const registrationMap = {};
+                    registrationResults.forEach(({ courseId, enrolled }) => {
+                        registrationMap[courseId] = enrolled;
+                    });
+
+                    setCourseRegistrations(registrationMap);
+                } catch (err) {
+                    console.error('Error fetching course registrations:', err);
+                }
+            }
+        };
+
+        fetchRegistrations();
+    }, [user, courses]);
 
     const validatePlaylistUrl = (url) => {
         if (!url || !url.trim()) {
@@ -197,8 +231,24 @@ const CourseCatalog = () => {
         }
     };
 
-    const handleCourseClick = (courseId) => {
-        navigate(`/course/${courseId}`);
+    const handleRegister = async (courseId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+            setRegisteringCourseId(courseId);
+            await registerForCourse(courseId);
+            // Update registration status
+            setCourseRegistrations(prev => ({
+                ...prev,
+                [courseId]: true
+            }));
+        } catch (err) {
+            console.error('Error registering for course:', err);
+            alert(err.response?.data?.detail || 'Failed to register for course. Please try again.');
+        } finally {
+            setRegisteringCourseId(null);
+        }
     };
 
     const toggleCourseDetails = (courseId) => {
@@ -455,17 +505,25 @@ const CourseCatalog = () => {
                                         </span>
                                     </button>
                                 </div>
-                                {user?.role !== 'admin' && (
+                                {user?.role === 'student' && (
                                     <div className="course-card-footer">
-                                        <button
-                                            className="btn-enroll"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleCourseClick(course.id);
-                                            }}
-                                        >
-                                            Start Course
-                                        </button>
+                                        {courseRegistrations[course.id] ? (
+                                            <Link
+                                                to={`/course/${course.id}`}
+                                                className="btn-enroll"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                Start Course
+                                            </Link>
+                                        ) : (
+                                            <button
+                                                className="btn-enroll"
+                                                onClick={(e) => handleRegister(course.id, e)}
+                                                disabled={registeringCourseId === course.id}
+                                            >
+                                                {registeringCourseId === course.id ? 'Registering...' : 'Register'}
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>
