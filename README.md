@@ -43,7 +43,9 @@ EduTrack/
 │   ├── database.py      # Database connection
 │   ├── dependencies.py  # Dependency injection
 │   ├── auth.py          # Auth utilities
-│   └── requirements.txt # Python dependencies
+│   ├── requirements.txt # Python dependencies
+│   ├── Dockerfile       # Backend container image
+│   └── .dockerignore    # Files to exclude from Docker build
 ├── frontend/            # React frontend
 │   ├── src/
 │   │   ├── components/  # React components
@@ -59,10 +61,13 @@ EduTrack/
 │   │   ├── api.js       # API client
 │   │   ├── App.js       # Main app component
 │   │   └── global.css   # Global styles
+|   ├── Dockerfile       # Frontend container image
+│   └── .dockerignore    # Files to exclude from Docker build
 │   ├── package.json     # Node dependencies
 │   └── public/          # Static files
 ├── database/            # Database schemas
-│   └── schema.sql
+│   └── schema.sql 
+├── cloudbuild.yaml      # GCP Cloud Build configuration for CI/CD
 ├── creat-pod.sh         # Podman pod creation script
 ├── README.md            # Main documentation
 └── README_MICROSERVICES.md # Microservices documentation
@@ -122,8 +127,10 @@ podman exec -it frontend /bin/sh -c "cd /app && npm start"
 ### Course Management
 - ✅ Course catalog with search functionality
 - ✅ Course registration for students
+- ✅ Course deletion for admins
 - ✅ YouTube playlist integration
 - ✅ Course thumbnails and metadata
+- ✅ Course detail expansion with descriptions
 
 ### Video Playback
 - ✅ Embedded YouTube video player
@@ -154,11 +161,11 @@ podman exec -it frontend /bin/sh -c "cd /app && npm start"
 ### Admin Features
 - ✅ Admin dashboard
 - ✅ Student list with attendance overview
-- ✅ Course management
+- ✅ Course management (add, delete courses)
 - ✅ Attendance reports by date/user
+- ✅ YouTube playlist integration for adding courses
 
 ### UI/UX
-- ✅ Responsive design (mobile, tablet, desktop)
 - ✅ Modern, clean interface
 - ✅ Smooth navigation
 - ✅ Loading states and error handling
@@ -170,19 +177,24 @@ podman exec -it frontend /bin/sh -c "cd /app && npm start"
 - `POST /auth/signup` - Register new user
 - `POST /auth/login` - Login user
 - `GET /auth/users/me` - Get current user
+- `GET /auth/users/students` - Get all students (authenticated users)
+- `GET /auth/users` - Get all users (admin only)
 - `GET /auth/health` - Health check
 
 ### Course Service (`/courses`)
 - `GET /courses` - Get all courses
 - `GET /courses/{course_id}` - Get specific course
+- `GET /courses/{course_id}/videos` - Get all videos for a course
 - `POST /courses/{course_id}/register` - Register for course (student)
 - `GET /courses/{course_id}/registration` - Check registration status
+- `DELETE /courses/{course_id}` - Delete course and all associated data (admin only)
 - `GET /courses/health` - Health check
 
 ### Video Service (`/videos`)
-- `GET /videos/course/{course_id}` - Get course videos
-- `POST /videos/youtube-playlist` - Add YouTube playlist
+- `POST /videos/youtube-playlist` - Add YouTube playlist (admin only)
 - `GET /videos/health` - Health check
+
+**Note:** Course videos are accessed via `/courses/{course_id}/videos` endpoint in the Course Service.
 
 ### Attendance Service (`/progress`, `/attendance`)
 - `POST /progress` - Track video watchtime progress
@@ -196,6 +208,7 @@ podman exec -it frontend /bin/sh -c "cd /app && npm start"
 - `GET /attendance/user/{user_id}` - Get user attendance (admin only)
 - `GET /attendance/date/{date}` - Get attendance by date (admin only)
 - `GET /attendance/today` - Get today's attendance
+- `POST /attendance/update-status` - Update attendance status based on watch time (admin only)
 - `GET /progress/health` - Health check
 
 ## Progress Tracking System
@@ -256,12 +269,12 @@ The application uses hot reload for both frontend and backend:
 ## Database Schema
 
 The application uses PostgreSQL with the following main tables:
-- `users` - User accounts
-- `courses` - Course information
-- `course_videos` - Video content
+- `user` - User accounts (note: table name is "user" not "users")
+- `course` - Course information
+- `course_video` - Video content
 - `progress` - Video watch time tracking (per day, per video, per user)
 - `attendance` - Daily attendance records
-- `course_registrations` - Student course enrollments
+- `course_status` - Student course enrollments (tracks registration status)
 
 ## Security
 
@@ -271,6 +284,82 @@ The application uses PostgreSQL with the following main tables:
 - CORS configuration
 - Input validation
 - SQL injection prevention (SQLAlchemy ORM)
+
+## Deployment
+
+### Google Cloud Platform (GCP) Deployment
+
+EduTrack can be deployed to GCP using Cloud Run and Cloud SQL:
+
+#### Prerequisites
+- GCP account with billing enabled
+- `gcloud` CLI installed and authenticated
+- Cloud Run and Cloud SQL APIs enabled
+
+#### Quick Deployment Steps
+
+1. **Set up Cloud SQL Database:**
+   ```bash
+   gcloud sql instances create edutrack-db \
+     --database-version=POSTGRES_15 \
+     --tier=db-f1-micro \
+     --region=YOUR_Reagion\
+     --root-password=YOUR_SECURE_PASSWORD
+   
+   gcloud sql databases create edutrack --instance=edutrack-db
+   gcloud sql users create postgres --instance=edutrack-db --password=postgres
+   ```
+
+2. **Apply Database Schema:**
+   ```bash
+   gcloud sql connect edutrack-db --user=postgres
+   # Then run: \c edutrack and paste database/schema.sql
+   ```
+
+3. **Deploy Backend:**
+   ```bash
+   cd backend
+   gcloud run deploy edutrack-backend \
+     --source . \
+     --region us-central1 \
+     --allow-unauthenticated \
+     --add-cloudsql-instances=PROJECT_ID:YOUR_Reagion:edutrack-db \
+     --set-env-vars="DATABASE_URL=postgresql://postgres:postgres@/edutrack?host=/cloudsql/PROJECT_ID:us-central1:edutrack-db,SECRET_KEY=your-secret-key"
+   ```
+
+4. **Deploy Frontend:**
+   ```bash
+   cd frontend
+   BACKEND_URL=$(gcloud run services describe edutrack-backend --region us-central1 --format="value(status.url)")
+   docker build --build-arg REACT_APP_API_URL=$BACKEND_URL -t gcr.io/PROJECT_ID/edutrack-frontend:latest .
+   docker push gcr.io/PROJECT_ID/edutrack-frontend:latest
+   gcloud run deploy edutrack-frontend \
+     --image gcr.io/PROJECT_ID/edutrack-frontend:latest \
+     --region us-central1 \
+     --allow-unauthenticated
+   ```
+
+#### Automated Deployment with Cloud Build
+
+The project includes `cloudbuild.yaml` for automated CI/CD:
+
+1. **Connect GitHub Repository:**
+   - Go to Cloud Console → Cloud Build → Triggers
+   - Connect your GitHub repository
+
+2. **Create Build Trigger:**
+   ```bash
+   gcloud builds triggers create github \
+     --name=edutrack-deploy \
+     --repo-name=EduTrack \
+     --repo-owner=YOUR_USERNAME \
+     --branch-pattern="^main$" \
+     --build-config=cloudbuild.yaml
+   ```
+
+3. **Push to main branch** - Deployment happens automatically!
+
+For detailed deployment instructions, see the deployment section in the project repository.
 
 ## Documentation
 

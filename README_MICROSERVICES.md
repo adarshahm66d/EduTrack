@@ -10,19 +10,24 @@ EduTrack is structured as a microservices application with the following service
    - User registration (`POST /auth/signup`)
    - User login (`POST /auth/login`)
    - Get current user (`GET /auth/users/me`)
+   - Get all students (`GET /auth/users/students`) - Authenticated users
+   - Get all users (`GET /auth/users`) - Admin only
    - Health check (`GET /auth/health`)
 
 2. **Course Service** (`/courses`)
    - Get all courses (`GET /courses`)
    - Get course by ID (`GET /courses/{course_id}`)
+   - Get course videos (`GET /courses/{course_id}/videos`)
    - Course registration (`POST /courses/{course_id}/register`)
    - Check registration status (`GET /courses/{course_id}/registration`)
+   - Delete course (`DELETE /courses/{course_id}`) - Admin only
    - Health check (`GET /courses/health`)
 
 3. **Video Service** (`/videos`)
-   - Get course videos (`GET /videos/course/{course_id}`)
-   - Add YouTube playlist (`POST /videos/youtube-playlist`)
+   - Add YouTube playlist (`POST /videos/youtube-playlist`) - Admin only
    - Health check (`GET /videos/health`)
+   
+   **Note:** Course videos are accessed via Course Service endpoint: `GET /courses/{course_id}/videos`
 
 4. **Attendance Service** (`/progress`, `/attendance`)
    - Track video progress (`POST /progress`)
@@ -31,6 +36,7 @@ EduTrack is structured as a microservices application with the following service
    - Get attendance by user (`GET /attendance/user/{user_id}`) - Admin only
    - Get attendance by date (`GET /attendance/date/{date}`) - Admin only
    - Get today's attendance (`GET /attendance/today`)
+   - Update attendance status (`POST /attendance/update-status`) - Admin only
    - Health check (`GET /progress/health`)
 
 ### API Gateway
@@ -65,15 +71,24 @@ backend/
 **Base Path:** `/auth`
 
 - `POST /auth/signup` - Register new user
-  - Request: `{ "username": string, "email": string, "password": string, "role": "student" | "admin" }`
-  - Response: `{ "message": string, "user_id": int }`
+  - Request: `{ "name": string, "email": string, "user_name": string, "password": string, "role": "student" | "admin" }`
+  - Response: `{ "id": int, "name": string, "email": string, "user_name": string, "role": string, "created_at": datetime }`
 
 - `POST /auth/login` - Login user
-  - Request: `{ "username": string, "password": string }`
-  - Response: `{ "access_token": string, "token_type": "bearer" }`
+  - Request: `{ "user_name": string, "password": string }`
+  - Response: `{ "access_token": string, "token_type": "bearer", "user": UserResponse }`
 
-- `GET /auth/users/me?token=...` - Get current user
-  - Response: `{ "id": int, "username": string, "email": string, "role": string }`
+- `GET /auth/users/me` - Get current user
+  - Requires: Authentication token
+  - Response: `{ "id": int, "name": string, "email": string, "user_name": string, "role": string }`
+
+- `GET /auth/users/students` - Get all students
+  - Requires: Authentication token
+  - Response: `[{ "id": int, "name": string, "email": string, ... }]`
+
+- `GET /auth/users` - Get all users (admin only)
+  - Requires: Authentication token (admin role)
+  - Response: `[{ "id": int, "name": string, "email": string, ... }]`
 
 - `GET /auth/health` - Service health check
 
@@ -87,22 +102,27 @@ backend/
 - `GET /courses/{course_id}` - Get specific course
   - Response: `{ "id": int, "course_title": string, ... }`
 
+- `GET /courses/{course_id}/videos` - Get all videos for a course
+  - Requires: Authentication token (optional)
+  - Response: `[{ "id": int, "course_id": int, "title": string, "video_link": string }]`
+
 - `POST /courses/{course_id}/register` - Register for course (student only)
   - Requires: Authentication token
-  - Response: `{ "message": string }`
+  - Response: `{ "course_id": int, "enrolled": boolean, "created_at": datetime }`
 
 - `GET /courses/{course_id}/registration` - Check registration status
   - Requires: Authentication token
-  - Response: `{ "enrolled": boolean }`
+  - Response: `{ "course_id": int, "enrolled": boolean, "created_at": datetime | null }`
+
+- `DELETE /courses/{course_id}` - Delete course and all associated data (admin only)
+  - Requires: Authentication token (admin role)
+  - Response: `{ "message": string, "course_id": int }`
 
 - `GET /courses/health` - Service health check
 
 ### Video Service
 
 **Base Path:** `/videos`
-
-- `GET /videos/course/{course_id}` - Get videos for a course
-  - Response: `[{ "id": int, "title": string, "video_link": string, ... }]`
 
 - `POST /videos/youtube-playlist` - Add YouTube playlist
   - Requires: Authentication token (admin only)
@@ -157,6 +177,10 @@ backend/
 - `GET /attendance/today` - Get today's attendance
   - Requires: Authentication token
   - Response: `{ "date": string, "status": string, "total_time": "HH:MM:SS", ... }`
+
+- `POST /attendance/update-status` - Update attendance status based on total watch time (admin only)
+  - Requires: Authentication token (admin role)
+  - Response: `{ "message": string, "date": string }`
 
 - `GET /progress/health` - Service health check
 
@@ -232,6 +256,8 @@ Future enhancements could include:
 
 ## Running the Application
 
+### Local Development (Podman/Docker)
+
 The application runs as a single container with all services, but they are logically separated:
 
 ```bash
@@ -241,6 +267,17 @@ The application runs as a single container with all services, but they are logic
 # Start backend (runs all services via API Gateway)
 podman exec -it backend /bin/sh -c "cd /app && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 ```
+
+### Production Deployment (GCP Cloud Run)
+
+The application is containerized and can be deployed to Google Cloud Platform:
+
+- **Backend**: Deployed as a Cloud Run service with Cloud SQL connection
+- **Frontend**: Deployed as a separate Cloud Run service (or Cloud Storage)
+- **Database**: Cloud SQL for PostgreSQL
+- **CI/CD**: Automated deployment via Cloud Build (see `cloudbuild.yaml`)
+
+For detailed deployment instructions, see the main [README.md](README.md) deployment section.
 
 ## Authentication Flow
 
