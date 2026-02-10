@@ -116,6 +116,54 @@ podman exec -it frontend /bin/sh -c "cd /app && npm start"
 - Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
 
+## Configuration
+
+All connection URLs and ports are configurable via `.env` files. No hardcoded values are used in the codebase.
+
+### Backend Configuration
+
+Create a `.env` file in the `backend/` directory with these variables:
+
+```env
+# Database Connection
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/edutrack
+
+# Frontend URL (for CORS)
+FRONTEND_URL=http://localhost:3000
+
+# CORS Origins (comma-separated)
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001,https://edutrack-frontend-163165605136.us-central1.run.app
+
+# Backend Server
+BACKEND_HOST=0.0.0.0
+BACKEND_PORT=8000
+```
+
+### Frontend Configuration
+
+Create a `.env` file in the `frontend/` directory with these variables:
+
+```env
+# Backend API URL
+REACT_APP_API_URL=http://localhost:8000
+
+# Frontend Port
+FRONTEND_PORT=3000
+```
+
+### Default Ports
+
+- **Database (PostgreSQL)**: 5432
+- **Backend API**: 8000
+- **Frontend (React)**: 3000
+
+### How to Use
+
+1. **Backend**: Create `backend/.env` file with the variables listed above
+2. **Frontend**: Create `frontend/.env` file with the variables listed above
+
+**Note:** In production (Cloud Run), these values are set via environment variables in `cloudbuild.yaml` and don't use `.env` files.
+
 ## Features
 
 ### User Management

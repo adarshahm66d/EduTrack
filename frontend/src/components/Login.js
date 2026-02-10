@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { login } from '../api';
+import { login, API_URL } from '../api';
 
 const Login = ({ onLogin }) => {
     const [formData, setFormData] = useState({
@@ -40,7 +40,7 @@ const Login = ({ onLogin }) => {
             if (err.response) {
                 setError(err.response?.data?.detail || err.response?.data?.message || 'Login failed. Please try again.');
             } else if (err.request) {
-                setError('Cannot connect to server. Make sure the backend is running on http://localhost:8000');
+                setError(`Cannot connect to server. Make sure the backend is running on ${API_URL}`);
             } else {
                 setError(err.message || 'Login failed. Please try again.');
             }

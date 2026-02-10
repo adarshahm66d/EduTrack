@@ -1,8 +1,23 @@
 #!/bin/bash
 
 # Script to create Podman pod with 3 containers: PostgreSQL, FastAPI Backend, and React Frontend
+# Ports and URLs can be customized via environment variables (defaults provided)
 
 POD_NAME="EduTrack_Pod"
+
+# Port configuration (can be overridden via environment variables)
+DB_PORT=${DB_PORT:-5432}
+BACKEND_PORT=${BACKEND_PORT:-8000}
+FRONTEND_PORT=${FRONTEND_PORT:-3000}
+
+# Database configuration (can be overridden via environment variables)
+POSTGRES_DB=${POSTGRES_DB:-edutrack}
+POSTGRES_USER=${POSTGRES_USER:-postgres}
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+
+# Backend configuration
+DATABASE_URL=${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${DB_PORT}/${POSTGRES_DB}}
+REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:${BACKEND_PORT}}
 
 # Check if podman is installed
 if ! command -v podman &> /dev/null; then
@@ -21,9 +36,9 @@ fi
 echo "Creating pod ${POD_NAME}..."
 podman pod create \
     --name ${POD_NAME} \
-    -p 5432:5432 \
-    -p 8000:8000 \
-    -p 3000:3000
+    -p ${DB_PORT}:5432 \
+    -p ${BACKEND_PORT}:8000 \
+    -p ${FRONTEND_PORT}:3000
 
 # Create volume for PostgreSQL data
 echo "Creating volume for PostgreSQL data..."
@@ -34,9 +49,9 @@ echo "Starting database container..."
 podman run -d \
     --pod ${POD_NAME} \
     --name database \
-    -e POSTGRES_DB=edutrack \
-    -e POSTGRES_USER=postgres \
-    -e POSTGRES_PASSWORD=postgres \
+    -e POSTGRES_DB=${POSTGRES_DB} \
+    -e POSTGRES_USER=${POSTGRES_USER} \
+    -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} \
     -v postgres-data:/var/lib/postgresql/data \
     --memory=512m \
     --cpus=0.5 \
@@ -47,7 +62,7 @@ echo "Starting backend container..."
 podman run -d \
     --pod ${POD_NAME} \
     --name backend \
-    -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/edutrack \
+    -e DATABASE_URL=${DATABASE_URL} \
     -e PYTHONUNBUFFERED=1 \
     -v $(pwd)/backend:/app:Z \
     --workdir /app \
@@ -61,7 +76,7 @@ echo "Starting frontend container..."
 podman run -d \
     --pod ${POD_NAME} \
     --name frontend \
-    -e REACT_APP_API_URL=http://localhost:8000 \
+    -e REACT_APP_API_URL=${REACT_APP_API_URL} \
     -e CHOKIDAR_USEPOLLING=true \
     -e WATCHPACK_POLLING=true \
     -e FAST_REFRESH=true \
