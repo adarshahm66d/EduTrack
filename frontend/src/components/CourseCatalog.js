@@ -493,6 +493,7 @@ const CourseCatalog = () => {
                                     <button
                                         className="btn-show-details"
                                         onClick={(e) => {
+                                            e.preventDefault();
                                             e.stopPropagation();
                                             toggleCourseDetails(course.id);
                                         }}

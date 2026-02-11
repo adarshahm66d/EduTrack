@@ -2635,6 +2635,11 @@ code {
     color: #155724;
 }
 
+.attendance-absent {
+    background: #f8d7da;
+    color: #721c24;
+}
+
 .attendance-in-progress {
     background: #fff3cd;
     color: #856404;
