@@ -7,7 +7,7 @@ const Landing = () => {
     const [courseThumbnails, setCourseThumbnails] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [expandedCourses, setExpandedCourses] = useState(new Set());
+    const [expandedCourses, setExpandedCourses] = useState([]);
 
     const extractVideoId = (url) => {
         if (!url) return null;
@@ -62,13 +62,11 @@ const Landing = () => {
 
     const toggleCourseDetails = (courseId) => {
         setExpandedCourses(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(courseId)) {
-                newSet.delete(courseId);
+            if (prev.includes(courseId)) {
+                return prev.filter(id => id !== courseId);
             } else {
-                newSet.add(courseId);
+                return [...prev, courseId];
             }
-            return newSet;
         });
     };
 
@@ -142,7 +140,7 @@ const Landing = () => {
                         {!loading && !error && courses.length > 0 && (
                             <div className="courses-grid">
                                 {courses.map((course) => {
-                                    const isExpanded = expandedCourses.has(course.id);
+                                    const isExpanded = expandedCourses.includes(course.id);
                                     const description = getCourseDescription(course.course_title);
                                     const thumbnail = courseThumbnails[course.id] || null;
 

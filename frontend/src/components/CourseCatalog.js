@@ -12,7 +12,7 @@ const CourseCatalog = () => {
     const [playlistUrl, setPlaylistUrl] = useState('');
     const [adding, setAdding] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [expandedCourses, setExpandedCourses] = useState(new Set());
+    const [expandedCourses, setExpandedCourses] = useState([]);
     const [courseRegistrations, setCourseRegistrations] = useState({});
     const [registeringCourseId, setRegisteringCourseId] = useState(null);
 
@@ -253,13 +253,11 @@ const CourseCatalog = () => {
 
     const toggleCourseDetails = (courseId) => {
         setExpandedCourses((prev) => {
-            const newSet = new Set(prev);
-            if (newSet.has(courseId)) {
-                newSet.delete(courseId);
+            if (prev.includes(courseId)) {
+                return prev.filter(id => id !== courseId);
             } else {
-                newSet.add(courseId);
+                return [...prev, courseId];
             }
-            return newSet;
         });
     };
 
@@ -453,7 +451,7 @@ const CourseCatalog = () => {
                 <div className="courses-grid">
                     {filteredCourses.map((course) => {
                         const thumbnail = courseThumbnails[course.id] || null;
-                        const isExpanded = expandedCourses.has(course.id);
+                        const isExpanded = expandedCourses.includes(course.id);
                         const description = getCourseDescription(course.course_title);
                         return (
                             <div
