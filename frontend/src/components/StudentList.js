@@ -9,6 +9,8 @@ const StudentList = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
+    const [loadingAttendance, setLoadingAttendance] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const navigate = useNavigate();
 
@@ -35,24 +37,9 @@ const StudentList = () => {
 
                 setStudents(studentsData);
 
-                // Fetch today's attendance
-                const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-                try {
-                    const attendanceData = await getAttendanceByDate(today);
-                    // Create a map of user_id -> attendance record
-                    const attendanceMapObj = {};
-                    if (attendanceData && Array.isArray(attendanceData)) {
-                        attendanceData.forEach(attendance => {
-                            if (attendance && attendance.user_id) {
-                                attendanceMapObj[attendance.user_id] = attendance;
-                            }
-                        });
-                    }
-                    setAttendanceMap(attendanceMapObj);
-                } catch (attendanceErr) {
-                    console.error('Failed to fetch attendance:', attendanceErr);
-                    // Don't fail the whole page if attendance fetch fails
-                }
+                // Fetch attendance for selected date (defaults to today)
+                const dateToFetch = selectedDate || new Date().toISOString().split('T')[0];
+                await fetchAttendanceForDate(dateToFetch);
             } catch (err) {
                 console.error('Failed to fetch data:', err);
                 setError('Failed to load student list. Please try again.');
@@ -67,7 +54,7 @@ const StudentList = () => {
         };
 
         fetchData();
-    }, [navigate]);
+    }, [navigate, selectedDate]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -80,6 +67,34 @@ const StudentList = () => {
 
     const toggleUserMenu = () => {
         setShowUserMenu(!showUserMenu);
+    };
+
+    const fetchAttendanceForDate = async (date) => {
+        try {
+            setLoadingAttendance(true);
+            const attendanceData = await getAttendanceByDate(date);
+            // Create a map of user_id -> attendance record
+            const attendanceMapObj = {};
+            if (attendanceData && Array.isArray(attendanceData)) {
+                attendanceData.forEach(attendance => {
+                    if (attendance && attendance.user_id) {
+                        attendanceMapObj[attendance.user_id] = attendance;
+                    }
+                });
+            }
+            setAttendanceMap(attendanceMapObj);
+        } catch (attendanceErr) {
+            console.error('Failed to fetch attendance:', attendanceErr);
+            setError('Failed to load attendance data. Please try again.');
+        } finally {
+            setLoadingAttendance(false);
+        }
+    };
+
+    const handleDateChange = async (e) => {
+        const newDate = e.target.value;
+        setSelectedDate(newDate);
+        await fetchAttendanceForDate(newDate);
     };
 
     useEffect(() => {
@@ -176,6 +191,16 @@ const StudentList = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="search-input"
                         />
+                        <div className="date-filter-container">
+                            <label htmlFor="attendance-date">Date: </label>
+                            <input
+                                type="date"
+                                id="attendance-date"
+                                value={selectedDate}
+                                onChange={handleDateChange}
+                                className="date-input"
+                            />
+                        </div>
                         <div className="student-count">
                             {filteredStudents.length} {filteredStudents.length === 1 ? 'student' : 'students'}
                             {searchTerm && ` found`}
@@ -197,7 +222,13 @@ const StudentList = () => {
                                         <th>Email</th>
                                         <th>Username</th>
                                         <th>Role</th>
-                                        <th>Today's Attendance</th>
+                                        <th>
+                                            Attendance ({new Date(selectedDate).toLocaleDateString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric'
+                                            })})
+                                        </th>
                                         <th>Status</th>
                                         <th>Member Since</th>
                                     </tr>
@@ -229,7 +260,11 @@ const StudentList = () => {
                                                     </span>
                                                 </td>
                                                 <td className="attendance-time">
-                                                    {attendance?.total_time ? formatTime(attendance.total_time) : '0:00:00'}
+                                                    {loadingAttendance ? (
+                                                        <span className="loading-text">Loading...</span>
+                                                    ) : (
+                                                        attendance?.total_time ? formatTime(attendance.total_time) : '0:00:00'
+                                                    )}
                                                 </td>
                                                 <td>
                                                     {(() => {
