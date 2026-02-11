@@ -135,10 +135,14 @@ def track_progress(
         
         attendance.total_time = total_watch_time
         
-        # Check if total time >= 3 hours, update status to "present"
+        # Check if total time >= 30 seconds, update status to "present"
+        # During the day, keep as "in progress" if < 30 seconds (will be marked "absent" at end of day)
         total_seconds = total_watch_time.total_seconds()
         if total_seconds >= MINIMUM_ATTENDANCE_SECONDS:
             attendance.status = "present"
+        elif attendance.status != "present":
+            # Keep as "in progress" if not already "present" (will be finalized at end of day)
+            attendance.status = "in progress"
         
         db.commit()
         db.refresh(attendance)
@@ -193,10 +197,14 @@ def track_progress(
         
         attendance.total_time = total_watch_time
         
-        # Check if total time >= 3 hours, update status to "present"
+        # Check if total time >= 30 seconds, update status to "present"
+        # During the day, keep as "in progress" if < 30 seconds (will be marked "absent" at end of day)
         total_seconds = total_watch_time.total_seconds()
         if total_seconds >= MINIMUM_ATTENDANCE_SECONDS:
             attendance.status = "present"
+        elif attendance.status != "present":
+            # Keep as "in progress" if not already "present" (will be finalized at end of day)
+            attendance.status = "in progress"
         
         db.commit()
         db.refresh(attendance)
@@ -428,16 +436,100 @@ def update_attendance_status(
         Attendance.date == today
     ).all()
     
-    updated_count = 0
+    updated_present = 0
+    updated_absent = 0
     for attendance in attendance_records:
-        if attendance.total_time and attendance.total_time.total_seconds() >= MINIMUM_ATTENDANCE_SECONDS:
+        total_seconds = 0
+        if attendance.total_time:
+            total_seconds = attendance.total_time.total_seconds()
+        
+        # Mark as "present" if >= 30 seconds
+        if total_seconds >= MINIMUM_ATTENDANCE_SECONDS:
             if attendance.status != "present":
                 attendance.status = "present"
-                updated_count += 1
+                updated_present += 1
+        # Mark as "absent" if < 30 seconds and status is not already "absent"
+        elif total_seconds < MINIMUM_ATTENDANCE_SECONDS and attendance.status != "absent":
+            attendance.status = "absent"
+            updated_absent += 1
     
     db.commit()
     
     return {
-        "message": f"Updated {updated_count} attendance records to 'present' status",
+        "message": f"Updated {updated_present} to 'present', {updated_absent} to 'absent'",
         "date": today.isoformat()
+    }
+
+@router.post("/attendance/finalize-daily")
+@attendance_router.post("/finalize-daily")
+def finalize_daily_attendance(
+    attendance_date: Optional[date] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Finalize daily attendance - marks students as absent if < 30 seconds or not started (admin only)"""
+    # Only admins can finalize attendance
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can finalize daily attendance"
+        )
+    
+    # Use provided date or yesterday (for finalizing previous day)
+    if attendance_date is None:
+        attendance_date = date.today() - timedelta(days=1)  # Default to yesterday
+    
+    # Get all students
+    all_students = db.query(User).filter(User.role == 'student').all()
+    
+    # Get all attendance records for the date
+    attendance_records = db.query(Attendance).filter(
+        Attendance.date == attendance_date
+    ).all()
+    
+    # Create a map of user_id -> attendance record
+    attendance_map = {att.user_id: att for att in attendance_records}
+    
+    updated_absent = 0
+    created_absent = 0
+    
+    for student in all_students:
+        attendance = attendance_map.get(student.id)
+        
+        if attendance:
+            # Student has attendance record - check if should be marked absent
+            total_seconds = 0
+            if attendance.total_time:
+                total_seconds = attendance.total_time.total_seconds()
+            
+            # If < 30 seconds and not already "present", mark as "absent"
+            if total_seconds < MINIMUM_ATTENDANCE_SECONDS and attendance.status != "present":
+                if attendance.status != "absent":
+                    attendance.status = "absent"
+                    updated_absent += 1
+        else:
+            # Student never started - create attendance record with "absent" status
+            try:
+                new_attendance = Attendance(
+                    user_id=student.id,
+                    date=attendance_date,
+                    total_time=timedelta(0),
+                    status="absent"
+                )
+                db.add(new_attendance)
+                created_absent += 1
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to create attendance record: {str(e)}"
+                )
+    
+    db.commit()
+    
+    return {
+        "message": f"Finalized attendance for {attendance_date.isoformat()}. Updated {updated_absent} to 'absent', created {created_absent} new 'absent' records.",
+        "date": attendance_date.isoformat(),
+        "updated_absent": updated_absent,
+        "created_absent": created_absent
     }
