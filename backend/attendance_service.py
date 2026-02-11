@@ -356,14 +356,25 @@ def get_attendance_by_date(
             detail="Only admins can view attendance by date"
         )
     
+    today = date.today()
+    is_past_date = attendance_date < today
+    
     attendance_records = db.query(Attendance).filter(
         Attendance.date == attendance_date
     ).order_by(Attendance.user_id).all()
     
-    # Format total_time as HH:MM:SS string
+    # Get all students to check for missing attendance records
+    all_students = db.query(User).filter(User.role == 'student').all()
+    attendance_map = {att.user_id: att for att in attendance_records}
+    
+    # Format total_time as HH:MM:SS string and update status for past dates
     result = []
+    updated_count = 0
+    new_records_created = False
+    
     for attendance in attendance_records:
         total_time_str = None
+        total_seconds = 0
         if attendance.total_time:
             total_seconds = int(attendance.total_time.total_seconds())
             hours = total_seconds // 3600
@@ -371,13 +382,83 @@ def get_attendance_by_date(
             seconds = total_seconds % 60
             total_time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         
+        # For past dates, automatically mark as "absent" if < 30 seconds
+        status = attendance.status
+        if is_past_date:
+            if total_seconds < MINIMUM_ATTENDANCE_SECONDS:
+                if status != "present" and status != "absent":
+                    # Update status to "absent" in database
+                    attendance.status = "absent"
+                    status = "absent"
+                    updated_count += 1
+                elif status != "present":
+                    status = "absent"
+        
         result.append({
             "id": attendance.id,
             "user_id": attendance.user_id,
             "date": attendance.date.isoformat(),
             "total_time": total_time_str,
-            "status": attendance.status
+            "status": status
         })
+    
+    # For past dates, create "absent" records for students who never started
+    if is_past_date:
+        for student in all_students:
+            if student.id not in attendance_map:
+                # Student never started - create absent record
+                # Check if record was created by another process (race condition)
+                existing = db.query(Attendance).filter(
+                    Attendance.user_id == student.id,
+                    Attendance.date == attendance_date
+                ).first()
+                
+                if not existing:
+                    new_attendance = Attendance(
+                        user_id=student.id,
+                        date=attendance_date,
+                        total_time=timedelta(0),
+                        status="absent"
+                    )
+                    db.add(new_attendance)
+                    db.flush()  # Get the ID without committing
+                    new_records_created = True
+                    
+                    result.append({
+                        "id": new_attendance.id,
+                        "user_id": student.id,
+                        "date": attendance_date.isoformat(),
+                        "total_time": "0:00:00",
+                        "status": "absent"
+                    })
+                else:
+                    # Record was created by another process, add it to result
+                    total_seconds = 0
+                    if existing.total_time:
+                        total_seconds = int(existing.total_time.total_seconds())
+                    hours = total_seconds // 3600
+                    minutes = (total_seconds % 3600) // 60
+                    seconds = total_seconds % 60
+                    total_time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                    
+                    status = existing.status
+                    if total_seconds < MINIMUM_ATTENDANCE_SECONDS and status != "present":
+                        status = "absent"
+                    
+                    result.append({
+                        "id": existing.id,
+                        "user_id": student.id,
+                        "date": attendance_date.isoformat(),
+                        "total_time": total_time_str,
+                        "status": status
+                    })
+    
+    # Commit any updates
+    if updated_count > 0 or new_records_created:
+        db.commit()
+    
+    # Sort by user_id for consistent ordering
+    result.sort(key=lambda x: x["user_id"])
     
     return result
 
