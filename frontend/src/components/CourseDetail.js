@@ -308,8 +308,8 @@ const CourseDetail = () => {
             clearTimeout(popupTimerRef.current);
         }
 
-        const minMinutes = 5;
-        const maxMinutes = 20;
+        const minMinutes = 45;
+        const maxMinutes = 60;
         const randomMinutes = Math.random() * (maxMinutes - minMinutes) + minMinutes;
         const randomMs = randomMinutes * 1000;
 

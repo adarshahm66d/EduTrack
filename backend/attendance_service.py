@@ -12,7 +12,7 @@ router = APIRouter(prefix="/progress", tags=["Progress"])
 attendance_router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
 # 3 hours in seconds (change back to 10800 for production)
-MINIMUM_ATTENDANCE_SECONDS = 30  # 10800 seconds for production (3 * 60 * 60)
+MINIMUM_ATTENDANCE_SECONDS = 120  # 10800 seconds for production (3 * 60 * 60)
 
 @router.post("", response_model=ProgressResponse, status_code=status.HTTP_201_CREATED)
 def track_progress(
