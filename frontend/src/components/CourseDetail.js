@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getCourse, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse, getVideoProgress, trackProgress } from '../api';
+import { getCourse, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse, unregisterFromCourse, getVideoProgress, trackProgress } from '../api';
 import VideoPopup from './VideoPopup';
 
 const CourseDetail = () => {
@@ -16,6 +16,7 @@ const CourseDetail = () => {
     const [isRegistered, setIsRegistered] = useState(false);
     const [checkingRegistration, setCheckingRegistration] = useState(true);
     const [registering, setRegistering] = useState(false);
+    const [unregistering, setUnregistering] = useState(false);
     const [videoProgress, setVideoProgress] = useState({}); // { videoId: { watchTime: seconds, percentage: number } }
 
     // Popup system state
@@ -131,6 +132,23 @@ const CourseDetail = () => {
             alert(err.response?.data?.detail || 'Failed to register for course. Please try again.');
         } finally {
             setRegistering(false);
+        }
+    };
+
+    const handleUnregister = async () => {
+        if (!window.confirm('Are you sure you want to unregister from this course? You will need to register again to access the videos.')) {
+            return;
+        }
+        try {
+            setUnregistering(true);
+            await unregisterFromCourse(courseId);
+            setIsRegistered(false);
+            alert('Successfully unregistered from the course.');
+        } catch (err) {
+            console.error('Error unregistering from course:', err);
+            alert(err.response?.data?.detail || 'Failed to unregister from course. Please try again.');
+        } finally {
+            setUnregistering(false);
         }
     };
 
@@ -628,6 +646,24 @@ const CourseDetail = () => {
                         <h1>EduTrack</h1>
                     </Link>
                     <div className="nav-links">
+                        {user?.role === 'student' && isRegistered && (
+                            <button
+                                className="nav-link unregister-btn"
+                                onClick={handleUnregister}
+                                disabled={unregistering}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#ff6b6b',
+                                    cursor: unregistering ? 'not-allowed' : 'pointer',
+                                    fontSize: '1rem',
+                                    padding: '0.5rem 1rem',
+                                    textDecoration: 'none'
+                                }}
+                            >
+                                {unregistering ? 'Unregistering...' : 'Unregister from Course'}
+                            </button>
+                        )}
                         <Link to={getDashboardPath()} className="nav-link">Back to Dashboard</Link>
                     </div>
                 </div>

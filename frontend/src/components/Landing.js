@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getCourses, getCourseVideos } from '../api';
+import RegistrationModal from './RegistrationModal';
 
 const Landing = () => {
     const [courses, setCourses] = useState([]);
@@ -8,6 +9,7 @@ const Landing = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [expandedCourses, setExpandedCourses] = useState([]);
+    const [showRegistrationModal, setShowRegistrationModal] = useState(false);
 
     const extractVideoId = (url) => {
         if (!url) return null;
@@ -101,7 +103,13 @@ const Landing = () => {
                         ) : (
                             <>
                                 <Link to="/login" className="nav-link">Login</Link>
-                                <Link to="/signup" className="nav-link nav-link-primary">Sign Up</Link>
+                                <button 
+                                    className="nav-link nav-link-primary register-btn"
+                                    onClick={() => setShowRegistrationModal(true)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                >
+                                    Sign Up
+                                </button>
                             </>
                         )}
                     </div>
@@ -194,9 +202,13 @@ const Landing = () => {
                                                         View Course
                                                     </Link>
                                                 ) : (
-                                                    <Link to="/signup" className="btn-enroll">
+                                                    <button 
+                                                        className="btn-enroll"
+                                                        onClick={() => setShowRegistrationModal(true)}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'center', textDecoration: 'none', display: 'inline-block' }}
+                                                    >
                                                         Sign Up to Enroll
-                                                    </Link>
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -207,12 +219,11 @@ const Landing = () => {
                     </div>
                 </section>
             </main>
-
-            <footer className="landing-footer">
-                <div className="footer-content">
-                    <p>&copy; 2026 EduTrack. All rights reserved.</p>
-                </div>
-            </footer>
+            
+            <RegistrationModal 
+                isOpen={showRegistrationModal} 
+                onClose={() => setShowRegistrationModal(false)} 
+            />
         </div>
     );
 };

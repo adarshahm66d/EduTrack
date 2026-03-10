@@ -49,14 +49,27 @@ export const getCurrentUser = async () => {
     return response.data;
 };
 
-export const getAllStudents = async () => {
-    const response = await api.get('/auth/users/students');
+export const forgotPassword = async (email) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+};
+
+export const resetPassword = async (token, newPassword) => {
+    const response = await api.post('/auth/reset-password', {
+        token,
+        new_password: newPassword
+    });
+    return response.data;
+};
+
+export const getAllStudents = async (params = {}) => {
+    const response = await api.get('/auth/users/students', { params });
     return response.data;
 };
 
 // Course Service API
-export const getCourses = async () => {
-    const response = await api.get('/courses');
+export const getCourses = async (params = {}) => {
+    const response = await api.get('/courses', { params });
     return response.data;
 };
 
@@ -77,6 +90,11 @@ export const getCourseRegistration = async (courseId) => {
 
 export const registerForCourse = async (courseId) => {
     const response = await api.post(`/courses/${courseId}/register`);
+    return response.data;
+};
+
+export const unregisterFromCourse = async (courseId) => {
+    const response = await api.delete(`/courses/${courseId}/register`);
     return response.data;
 };
 

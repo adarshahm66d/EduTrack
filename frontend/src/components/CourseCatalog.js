@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { getCourses, addYouTubePlaylist, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse } from '../api';
+import { getCourses, addYouTubePlaylist, getCourseVideos, getCurrentUser, getCourseRegistration, registerForCourse, unregisterFromCourse } from '../api';
+import Pagination from './Pagination';
+import SortControls from './SortControls';
 
 const CourseCatalog = () => {
     const [courses, setCourses] = useState([]);
@@ -15,6 +17,17 @@ const CourseCatalog = () => {
     const [expandedCourses, setExpandedCourses] = useState([]);
     const [courseRegistrations, setCourseRegistrations] = useState({});
     const [registeringCourseId, setRegisteringCourseId] = useState(null);
+    const [unregisteringCourseId, setUnregisteringCourseId] = useState(null);
+    
+    // Pagination and sorting state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [sortBy, setSortBy] = useState('id');
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [paginationData, setPaginationData] = useState({
+        total: 0,
+        totalPages: 0
+    });
 
     const extractVideoId = (url) => {
         if (!url) return null;
@@ -26,17 +39,40 @@ const CourseCatalog = () => {
         try {
             setLoading(true);
             setError('');
-            const data = await getCourses();
+            const params = {
+                page: currentPage,
+                page_size: pageSize,
+                sort_by: sortBy,
+                sort_order: sortOrder
+            };
+            
+            if (searchTerm.trim()) {
+                params.search = searchTerm.trim();
+            }
+            
+            const data = await getCourses(params);
 
-            // Ensure data is an array
-            if (!Array.isArray(data)) {
+            // Handle paginated response
+            if (data && data.items) {
+                setCourses(data.items);
+                setPaginationData({
+                    total: data.total,
+                    totalPages: data.total_pages
+                });
+            } else if (Array.isArray(data)) {
+                // Fallback for non-paginated response
+                setCourses(data);
+                setPaginationData({
+                    total: data.length,
+                    totalPages: 1
+                });
+            } else {
                 console.error('Invalid response format:', data);
                 setError('Invalid response from server. Please try again.');
                 setCourses([]);
+                setPaginationData({ total: 0, totalPages: 0 });
                 return;
             }
-
-            setCourses(data);
 
             // Only fetch thumbnails if there are courses
             if (data.length > 0) {
@@ -82,7 +118,7 @@ const CourseCatalog = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentPage, pageSize, sortBy, sortOrder, searchTerm]);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -98,8 +134,18 @@ const CourseCatalog = () => {
         };
 
         fetchUser();
+    }, []);
+
+    useEffect(() => {
         fetchCourses();
     }, [fetchCourses]);
+    
+    // Reset to page 1 when search term changes
+    useEffect(() => {
+        if (currentPage !== 1) {
+            setCurrentPage(1);
+        }
+    }, [searchTerm]);
 
     // Fetch registration status for students when courses and user are available
     useEffect(() => {
@@ -125,7 +171,7 @@ const CourseCatalog = () => {
                         registrationMap[courseId] = enrolled;
                     });
 
-                    setCourseRegistrations(registrationMap);
+                    setCourseRegistrations(prev => ({ ...prev, ...registrationMap }));
                 } catch (err) {
                     console.error('Error fetching course registrations:', err);
                 }
@@ -251,6 +297,30 @@ const CourseCatalog = () => {
         }
     };
 
+    const handleUnregister = async (courseId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!window.confirm('Are you sure you want to unregister from this course? You will need to register again to access the videos.')) {
+            return;
+        }
+
+        try {
+            setUnregisteringCourseId(courseId);
+            await unregisterFromCourse(courseId);
+            // Update registration status
+            setCourseRegistrations(prev => ({
+                ...prev,
+                [courseId]: false
+            }));
+        } catch (err) {
+            console.error('Error unregistering from course:', err);
+            alert(err.response?.data?.detail || 'Failed to unregister from course. Please try again.');
+        } finally {
+            setUnregisteringCourseId(null);
+        }
+    };
+
     const toggleCourseDetails = (courseId) => {
         setExpandedCourses((prev) => {
             if (prev.includes(courseId)) {
@@ -339,10 +409,21 @@ const CourseCatalog = () => {
         setSearchTerm(e.target.value);
     };
 
-    // Filter courses based on search term
-    const filteredCourses = courses.filter(course =>
-        course.course_title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handlePageSizeChange = (newPageSize) => {
+        setPageSize(newPageSize);
+        setCurrentPage(1);
+    };
+
+    const handleSortChange = (newSortBy, newSortOrder) => {
+        setSortBy(newSortBy);
+        setSortOrder(newSortOrder);
+        setCurrentPage(1);
+    };
 
 
     if (loading) {
@@ -412,7 +493,7 @@ const CourseCatalog = () => {
 
             {error && <div className="error-message">{error}</div>}
 
-            {courses.length > 0 && (
+            <div className="catalog-controls">
                 <div className="search-container">
                     <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="11" cy="11" r="8"></circle>
@@ -435,21 +516,26 @@ const CourseCatalog = () => {
                         </button>
                     )}
                 </div>
-            )}
+                <SortControls
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSortChange={handleSortChange}
+                    sortOptions={[
+                        { value: 'id', label: 'ID' },
+                        { value: 'course_title', label: 'Course Title' }
+                    ]}
+                />
+            </div>
 
-            {courses.length === 0 ? (
+            {courses.length === 0 && !loading ? (
                 <div className="empty-state">
-                    <p>No courses available yet.</p>
-                    <p>Add a YouTube playlist to get started!</p>
-                </div>
-            ) : filteredCourses.length === 0 ? (
-                <div className="empty-state">
-                    <p>No courses found matching "{searchTerm}".</p>
-                    <p>Try a different search term.</p>
+                    <p>{searchTerm ? `No courses found matching "${searchTerm}".` : 'No courses available yet.'}</p>
+                    <p>{searchTerm ? 'Try a different search term.' : 'Add a YouTube playlist to get started!'}</p>
                 </div>
             ) : (
-                <div className="courses-grid">
-                    {filteredCourses.map((course) => {
+                <>
+                    <div className="courses-grid">
+                        {courses.map((course) => {
                         const thumbnail = courseThumbnails[course.id] || null;
                         const isExpanded = expandedCourses.includes(course.id);
                         const description = getCourseDescription(course.course_title);
@@ -507,13 +593,33 @@ const CourseCatalog = () => {
                                 {user?.role === 'student' && (
                                     <div className="course-card-footer">
                                         {courseRegistrations[course.id] ? (
-                                            <Link
-                                                to={`/course/${course.id}`}
-                                                className="btn-enroll"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                Start Course
-                                            </Link>
+                                            <>
+                                                <Link
+                                                    to={`/course/${course.id}`}
+                                                    className="btn-enroll"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    Start Course
+                                                </Link>
+                                                <button
+                                                    className="btn-unregister"
+                                                    onClick={(e) => handleUnregister(course.id, e)}
+                                                    disabled={unregisteringCourseId === course.id}
+                                                    style={{
+                                                        marginTop: '0.5rem',
+                                                        background: 'transparent',
+                                                        border: '1px solid #ff6b6b',
+                                                        color: '#ff6b6b',
+                                                        padding: '0.5rem 1rem',
+                                                        borderRadius: '4px',
+                                                        cursor: unregisteringCourseId === course.id ? 'not-allowed' : 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        width: '100%'
+                                                    }}
+                                                >
+                                                    {unregisteringCourseId === course.id ? 'Unregistering...' : 'Unregister'}
+                                                </button>
+                                            </>
                                         ) : (
                                             <button
                                                 className="btn-enroll"
@@ -527,8 +633,19 @@ const CourseCatalog = () => {
                                 )}
                             </div>
                         );
-                    })}
-                </div>
+                        })}
+                    </div>
+                    {paginationData.totalPages > 0 && (
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={paginationData.totalPages}
+                            onPageChange={handlePageChange}
+                            pageSize={pageSize}
+                            total={paginationData.total}
+                            onPageSizeChange={handlePageSizeChange}
+                        />
+                    )}
+                </>
             )}
         </div>
     );

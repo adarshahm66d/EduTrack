@@ -12,6 +12,10 @@ class User(Base):
     password = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     role = Column(String(50), default='student')
+    reset_token = Column(String(255), nullable=True, index=True)
+    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
+    phone = Column(String(20), nullable=True)
+    date_of_birth = Column(Date, nullable=True)
 
 class Course(Base):
     __tablename__ = "course"

@@ -8,6 +8,8 @@ class UserSignup(BaseModel):
     user_name: str
     password: str
     role: Optional[str] = "student"
+    phone: Optional[str] = None
+    date_of_birth: Optional[str] = None  # Format: YYYY-MM-DD
 
 class UserLogin(BaseModel):
     user_name: str
@@ -84,3 +86,21 @@ class AttendanceResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class PaginatedResponse(BaseModel):
+    items: list
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class PasswordResetResponse(BaseModel):
+    message: str
+    reset_token: Optional[str] = None  # Only returned in development mode

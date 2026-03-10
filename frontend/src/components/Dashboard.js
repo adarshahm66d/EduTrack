@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getCurrentUser, getCourses, getCourseVideos, getCourseRegistration, registerForCourse } from '../api';
+import { getCurrentUser, getCourses, getCourseVideos, getCourseRegistration, registerForCourse, unregisterFromCourse } from '../api';
 
 const Dashboard = () => {
     const [user, setUser] = useState(null);
@@ -11,6 +11,7 @@ const Dashboard = () => {
     const [coursesLoading, setCoursesLoading] = useState(true);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [registeringCourseId, setRegisteringCourseId] = useState(null);
+    const [unregisteringCourseId, setUnregisteringCourseId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const navigate = useNavigate();
 
@@ -148,6 +149,30 @@ const Dashboard = () => {
             alert(err.response?.data?.detail || 'Failed to register for course. Please try again.');
         } finally {
             setRegisteringCourseId(null);
+        }
+    };
+
+    const handleUnregister = async (courseId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!window.confirm('Are you sure you want to unregister from this course? You will need to register again to access the videos.')) {
+            return;
+        }
+
+        try {
+            setUnregisteringCourseId(courseId);
+            await unregisterFromCourse(courseId);
+            // Update registration status
+            setCourseRegistrations(prev => ({
+                ...prev,
+                [courseId]: false
+            }));
+        } catch (err) {
+            console.error('Error unregistering from course:', err);
+            alert(err.response?.data?.detail || 'Failed to unregister from course. Please try again.');
+        } finally {
+            setUnregisteringCourseId(null);
         }
     };
 
@@ -332,9 +357,29 @@ const Dashboard = () => {
                                         {user?.role === 'student' && (
                                             <div className="course-card-footer">
                                                 {courseRegistrations[course.id] ? (
-                                                    <Link to={`/course/${course.id}`} className="btn-enroll">
-                                                        Start Course
-                                                    </Link>
+                                                    <>
+                                                        <Link to={`/course/${course.id}`} className="btn-enroll">
+                                                            Start Course
+                                                        </Link>
+                                                        <button
+                                                            className="btn-unregister"
+                                                            onClick={(e) => handleUnregister(course.id, e)}
+                                                            disabled={unregisteringCourseId === course.id}
+                                                            style={{
+                                                                marginTop: '0.5rem',
+                                                                background: 'transparent',
+                                                                border: '1px solid #ff6b6b',
+                                                                color: '#ff6b6b',
+                                                                padding: '0.5rem 1rem',
+                                                                borderRadius: '4px',
+                                                                cursor: unregisteringCourseId === course.id ? 'not-allowed' : 'pointer',
+                                                                fontSize: '0.9rem',
+                                                                width: '100%'
+                                                            }}
+                                                        >
+                                                            {unregisteringCourseId === course.id ? 'Unregistering...' : 'Unregister'}
+                                                        </button>
+                                                    </>
                                                 ) : (
                                                     <button
                                                         className="btn-enroll"

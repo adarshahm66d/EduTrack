@@ -3,11 +3,14 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Landing from './components/Landing';
 import Login from './components/Login';
 import Signup from './components/Signup';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/AdminDashboard';
 import StudentList from './components/StudentList';
 import CourseDetail from './components/CourseDetail';
 import CourseCatalog from './components/CourseCatalog';
+import Footer from './components/Footer';
 
 function App() {
     const [token, setToken] = useState(() => localStorage.getItem('token'));
@@ -37,16 +40,21 @@ function App() {
     return (
         <Router>
             <div className="App">
-                <Routes>
+                <div className="app-content">
+                    <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/login" element={!token ? <Login onLogin={() => setToken(localStorage.getItem('token'))} /> : <Navigate to="/dashboard" replace />} />
                     <Route path="/signup" element={!token ? <Signup /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard" element={token ? <Dashboard /> : <Navigate to="/login" replace />} />
-                    <Route path="/admin" element={token ? <AdminDashboard /> : <Navigate to="/login" replace />} />
-                    <Route path="/students" element={token ? <StudentList /> : <Navigate to="/login" replace />} />
-                    <Route path="/catalog" element={token ? <CourseCatalog /> : <Navigate to="/login" replace />} />
-                    <Route path="/course/:courseId" element={token ? <CourseDetail /> : <Navigate to="/login" replace />} />
-                </Routes>
+                    <Route path="/forgot-password" element={!token ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="/reset-password" element={!token ? <ResetPassword /> : <Navigate to="/dashboard" replace />} />
+                        <Route path="/dashboard" element={token ? <Dashboard /> : <Navigate to="/login" replace />} />
+                        <Route path="/admin" element={token ? <AdminDashboard /> : <Navigate to="/login" replace />} />
+                        <Route path="/students" element={token ? <StudentList /> : <Navigate to="/login" replace />} />
+                        <Route path="/catalog" element={token ? <CourseCatalog /> : <Navigate to="/login" replace />} />
+                        <Route path="/course/:courseId" element={token ? <CourseDetail /> : <Navigate to="/login" replace />} />
+                    </Routes>
+                </div>
+                <Footer />
             </div>
         </Router>
     );
